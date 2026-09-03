@@ -71,11 +71,21 @@ def match_aws_ranges(ips, ranges):
     return matches
 
 
+
+def parse_bounded_json(body, max_bytes=8_000_000):
+    if len(body) > max_bytes:
+        raise ValueError('payload exceeds bounded JSON limit')
+    return json.loads(body)
+
 def fetch_aws_ranges(timeout=5):
     url='https://ip-ranges.amazonaws.com/ip-ranges.json'
+    max_bytes=8_000_000
     with urllib.request.urlopen(url, timeout=timeout) as response:
-        body=response.read(2_000_000)
-    return json.loads(body), bounded_sha256(body)
+        declared=response.headers.get('Content-Length')
+        if declared and int(declared) > max_bytes:
+            raise ValueError('AWS ranges payload exceeds bounded limit')
+        body=response.read(max_bytes + 1)
+    return parse_bounded_json(body, max_bytes=max_bytes), bounded_sha256(body)
 
 def collect_dns(hostname):
     out=[]

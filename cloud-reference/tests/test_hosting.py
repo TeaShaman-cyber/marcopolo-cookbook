@@ -32,6 +32,16 @@ class ProviderEvidenceTests(unittest.TestCase):
         self.assertEqual(matches[0]['region'], 'us-west-2')
         self.assertEqual(matches[0]['service'], 'EC2')
 
+
+    def test_bounded_json_rejects_oversized_payload(self):
+        from hosting import parse_bounded_json
+        with self.assertRaises(ValueError):
+            parse_bounded_json(b'{"x":1}', max_bytes=3)
+
+    def test_bounded_json_accepts_complete_payload(self):
+        from hosting import parse_bounded_json
+        self.assertEqual(parse_bounded_json(b'{"x":1}', max_bytes=32), {"x":1})
+
     def test_amazon_tls_issuer_is_independent_provider_marker(self):
         from hosting import tls_provider_candidate
         tls={'issuer': [[['countryName','US']], [['organizationName','Amazon']], [['commonName','Amazon RSA 2048 M04']]]}
