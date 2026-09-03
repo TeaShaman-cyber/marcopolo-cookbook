@@ -36,3 +36,27 @@ Bootstrap classification:
 `REMOTE_PUBLISHED_GOVERNED_READBACK_VERIFIED / NATIVE_INDEPENDENT_READBACK_PENDING`
 
 No visibility relaxation was used to work around this limitation.
+
+## Follow-up: public visibility and native readback
+
+After the initial private bootstrap was verified through the governed GitHub path, repository visibility was intentionally changed to `PUBLIC` because public release was already the intended destination after curated secret review.
+
+Observed through governed GitHub metadata after the visibility change:
+
+```json
+{"defaultBranchRef":{"name":"main"},"nameWithOwner":"TeaShaman-cyber/marcopolo-cookbook","url":"https://github.com/TeaShaman-cyber/marcopolo-cookbook","visibility":"PUBLIC"}
+```
+
+Independent native GitHub connector readback then succeeded and confirmed:
+
+- repository: `TeaShaman-cyber/marcopolo-cookbook`
+- visibility: `public`
+- default branch: `main`
+- exact previously published commit `71f71e8d105c7ae41348d0cf9c170034c265ecb8` is readable through the native connector
+- representative repository content is accessible through the public read path
+
+The earlier `BLOCKED_CONNECTOR_SCOPE` observation remains valid historical evidence for the private state and is not deleted or rewritten.
+
+Current bootstrap classification:
+
+`REMOTE_PUBLISHED / PUBLIC / GOVERNED_READBACK_VERIFIED / NATIVE_INDEPENDENT_READBACK_VERIFIED`
