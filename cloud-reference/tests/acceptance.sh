@@ -29,7 +29,7 @@ if git ls-files | grep -E '(^|/)(\.env($|\.)|\.vercel/|node_modules/|__pycache__
   exit 2
 fi
 
-if git grep -I -n -E 'BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|api[_-]?key[[:space:]]*[:=][[:space:]]*[^[:space:]]|authorization[[:space:]]*:[[:space:]]*bearer[[:space:]]+' -- cloud-reference docs/research/hosting-evidence 2>/dev/null; then
+if rg -I -n -E 'BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY|api[_-]?key[[:space:]]*[:=][[:space:]]*[^[:space:]]|authorization[[:space:]]*:[[:space:]]*bearer[[:space:]]+' cloud-reference docs/research/hosting-evidence 2>/dev/null; then
   echo 'secret marker found' >&2
   exit 3
 fi
