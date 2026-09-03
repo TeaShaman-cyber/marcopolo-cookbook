@@ -1,4 +1,5 @@
 import json
+import ipaddress
 import re
 import socket
 import ssl
@@ -39,6 +40,42 @@ def detect_provider_candidate(kind, value):
             return 'fly.io'
     return None
 
+
+
+def tls_provider_candidate(tls):
+    issuer = json.dumps(tls.get('issuer', []), sort_keys=True).lower()
+    if 'amazon' in issuer:
+        return 'aws'
+    return None
+
+
+def match_aws_ranges(ips, ranges):
+    matches=[]
+    prefixes=ranges.get('prefixes', [])
+    for raw_ip in ips:
+        ip=ipaddress.ip_address(raw_ip)
+        for item in prefixes:
+            try:
+                network=ipaddress.ip_network(item['ip_prefix'])
+            except (KeyError, ValueError):
+                continue
+            if ip in network:
+                matches.append({
+                    'ip': raw_ip,
+                    'ip_prefix': item['ip_prefix'],
+                    'region': item.get('region'),
+                    'network_border_group': item.get('network_border_group'),
+                    'service': item.get('service'),
+                    'provider_candidate': 'aws',
+                })
+    return matches
+
+
+def fetch_aws_ranges(timeout=5):
+    url='https://ip-ranges.amazonaws.com/ip-ranges.json'
+    with urllib.request.urlopen(url, timeout=timeout) as response:
+        body=response.read(2_000_000)
+    return json.loads(body), bounded_sha256(body)
 
 def collect_dns(hostname):
     out=[]
@@ -109,14 +146,27 @@ def build_hosting_receipt(hostname, timeout=5, observation_time=None):
     try:
         dns=collect_dns(hostname)
         add_observation(receipt,'dns','target',dns)
+        ips=[item['value'] for item in dns if item.get('type') == 'address']
         for item in dns:
             if item.get('provider_candidate'):
                 add_observation(receipt,'dns_provider_marker','target',{'provider_candidate':item['provider_candidate'],'record':item['value']})
+        try:
+            aws_ranges, aws_hash = fetch_aws_ranges(timeout=timeout)
+            receipt['raw_hashes'].append(aws_hash)
+            matches=match_aws_ranges(ips, aws_ranges)
+            if matches:
+                add_observation(receipt,'network_provider_range','aws-ip-ranges',{'provider_candidate':'aws','matches':matches,'createDate':aws_ranges.get('createDate')},authority='provider_owned')
+        except Exception as range_exc:
+            add_observation(receipt,'network_provider_range','aws-ip-ranges',{'error':str(range_exc)},authority='observed')
     except Exception as e:
         receipt['failure']={'type':'TARGET_DNS_ERROR','message':str(e)}
         return receipt
     try:
-        add_observation(receipt,'tls','target',collect_tls(hostname,timeout=timeout))
+        tls=collect_tls(hostname,timeout=timeout)
+        add_observation(receipt,'tls','target',tls)
+        tls_candidate=tls_provider_candidate(tls)
+        if tls_candidate:
+            add_observation(receipt,'tls_provider_marker','target',{'provider_candidate':tls_candidate,'issuer':tls.get('issuer')},authority='observed')
     except Exception as e:
         add_observation(receipt,'tls','target',{'error':str(e)})
     try:

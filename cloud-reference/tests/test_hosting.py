@@ -22,3 +22,17 @@ class HostingTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+class ProviderEvidenceTests(unittest.TestCase):
+    def test_aws_range_matching_is_network_authority_only(self):
+        from hosting import match_aws_ranges
+        ranges={'prefixes':[{'ip_prefix':'44.224.0.0/11','region':'us-west-2','service':'EC2','network_border_group':'us-west-2'}]}
+        matches=match_aws_ranges(['44.226.16.168'], ranges)
+        self.assertEqual(matches[0]['provider_candidate'], 'aws')
+        self.assertEqual(matches[0]['region'], 'us-west-2')
+        self.assertEqual(matches[0]['service'], 'EC2')
+
+    def test_amazon_tls_issuer_is_independent_provider_marker(self):
+        from hosting import tls_provider_candidate
+        tls={'issuer': [[['countryName','US']], [['organizationName','Amazon']], [['commonName','Amazon RSA 2048 M04']]]}
+        self.assertEqual(tls_provider_candidate(tls), 'aws')
