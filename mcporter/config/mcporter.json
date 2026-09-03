@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "exa": {
+      "description": "Public Exa remote MCP for read-only web search/fetch",
+      "baseUrl": "https://mcp.exa.ai/mcp?tools=web_search_exa,web_fetch_exa"
+    },
+    "parallel": {
+      "description": "Public Parallel Search remote MCP for read-only web search/fetch",
+      "baseUrl": "https://search.parallel.ai/mcp"
+    },
+    "wolfram": {
+      "baseUrl": "https://agenttools.wolfram.com/mcp",
+      "description": "Official free Wolfram Cloud MCP for computation and curated knowledge"
+    }
+  }
+}

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT=/workspace/tools/mcporter
+exec "$ROOT/node_modules/.bin/mcporter" --config "$ROOT/config/mcporter.json" "$@"
