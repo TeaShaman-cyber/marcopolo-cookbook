@@ -657,3 +657,41 @@ When uncertain, preserve ambiguity and collect an independent observation rather
 - `../mcporter/README.md` — MCP client workbench; do not assume its runtime dependencies are globally installed.
 
 Update this README whenever a new MarcoPolo failure mode produces a **reusable workaround or stronger verification rule**. One-off transient failures belong in session evidence; repeated or architecturally meaningful lessons belong here.
+
+---
+
+## 23. `gh auth setup-git` does not make a custom `GH_CONFIG_DIR` magically permanent
+
+### Observed symptom
+
+A governed push succeeded when invoked as:
+
+```bash
+GH_CONFIG_DIR=/workspace/.config/gh-write git push ...
+```
+
+but a later plain:
+
+```bash
+git fetch origin main
+```
+
+returned GitHub HTTP `403`.
+
+### Root cause class
+
+`gh auth setup-git` configures Git to use the GitHub CLI credential helper, but a custom MarcoPolo `GH_CONFIG_DIR` is process environment. A later Git process that invokes `gh` without that environment can resolve a different/no GitHub CLI credential context.
+
+### Safe pattern
+
+For governed Git operations in this workspace, bind the configuration explicitly for the command group:
+
+```bash
+export GH_CONFIG_DIR=/workspace/.config/gh-write
+git fetch origin main
+git push origin main
+```
+
+or prefix each command individually.
+
+Do not interpret the resulting unauthenticated/wrong-context `403` as evidence that repository permissions changed until the same operation is retried in the intended governed credential context.
