@@ -39,3 +39,7 @@ Generated dependencies and caches such as `node_modules/`, `__pycache__/`, Pytho
 ## Updating the cookbook
 
 Reusable failure modes and verified workarounds belong in the cookbook. One-off transient incidents remain session evidence until they yield a general operational rule.
+
+## Cloud reference
+
+See `cloud-reference/` for passive hosting evidence, reviewed MCP documentation wrappers, and connector-filter diagnostics.

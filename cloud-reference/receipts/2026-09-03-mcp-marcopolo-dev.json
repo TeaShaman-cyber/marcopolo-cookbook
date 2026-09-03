@@ -1,0 +1,223 @@
+{
+  "classification": "VERIFIED_PROVIDER",
+  "confidence": 0.8,
+  "failure": null,
+  "layers": {
+    "application": {
+      "classification": "OBSERVED_COMPONENT",
+      "confidence": 0.6,
+      "evidence_classes": [
+        "http_server"
+      ],
+      "provider": "uvicorn"
+    },
+    "serving": {
+      "classification": "VERIFIED_PROVIDER",
+      "confidence": 0.8,
+      "evidence_classes": [
+        "network_provider_range",
+        "tls_provider_marker"
+      ],
+      "provider": "aws"
+    }
+  },
+  "observation_time": "2026-09-03T10:26:08Z",
+  "observations": [
+    {
+      "authority": "observed",
+      "evidence_class": "dns",
+      "source": "target",
+      "value": [
+        {
+          "type": "address",
+          "value": "44.226.16.168"
+        },
+        {
+          "type": "address",
+          "value": "52.24.134.40"
+        }
+      ]
+    },
+    {
+      "authority": "provider_owned",
+      "evidence_class": "network_provider_range",
+      "source": "aws-ip-ranges",
+      "value": {
+        "createDate": "2026-09-03-07-47-05",
+        "matches": [
+          {
+            "ip": "44.226.16.168",
+            "ip_prefix": "44.224.0.0/11",
+            "network_border_group": "us-west-2",
+            "provider_candidate": "aws",
+            "region": "us-west-2",
+            "service": "AMAZON"
+          },
+          {
+            "ip": "44.226.16.168",
+            "ip_prefix": "44.224.0.0/11",
+            "network_border_group": "us-west-2",
+            "provider_candidate": "aws",
+            "region": "us-west-2",
+            "service": "EC2"
+          },
+          {
+            "ip": "52.24.134.40",
+            "ip_prefix": "52.24.0.0/14",
+            "network_border_group": "us-west-2",
+            "provider_candidate": "aws",
+            "region": "us-west-2",
+            "service": "AMAZON"
+          },
+          {
+            "ip": "52.24.134.40",
+            "ip_prefix": "52.24.0.0/14",
+            "network_border_group": "us-west-2",
+            "provider_candidate": "aws",
+            "region": "us-west-2",
+            "service": "EC2"
+          }
+        ],
+        "provider_candidate": "aws"
+      }
+    },
+    {
+      "authority": "provider_owned",
+      "evidence_class": "network_provider_range",
+      "layer": "serving",
+      "source": "aws-ip-ranges",
+      "value": {
+        "layer": "serving",
+        "provider_candidate": "aws"
+      }
+    },
+    {
+      "authority": "observed",
+      "evidence_class": "tls",
+      "source": "target",
+      "value": {
+        "issuer": [
+          [
+            [
+              "countryName",
+              "US"
+            ]
+          ],
+          [
+            [
+              "organizationName",
+              "Amazon"
+            ]
+          ],
+          [
+            [
+              "commonName",
+              "Amazon RSA 2048 M04"
+            ]
+          ]
+        ],
+        "notAfter": "Feb 13 23:59:59 2027 GMT",
+        "notBefore": "Jul 31 00:00:00 2026 GMT",
+        "subject": [
+          [
+            [
+              "commonName",
+              "*.marcopolo.dev"
+            ]
+          ]
+        ],
+        "subjectAltName": [
+          [
+            "DNS",
+            "*.marcopolo.dev"
+          ]
+        ],
+        "version": 3
+      }
+    },
+    {
+      "authority": "observed",
+      "evidence_class": "tls_provider_marker",
+      "source": "target",
+      "value": {
+        "issuer": [
+          [
+            [
+              "countryName",
+              "US"
+            ]
+          ],
+          [
+            [
+              "organizationName",
+              "Amazon"
+            ]
+          ],
+          [
+            [
+              "commonName",
+              "Amazon RSA 2048 M04"
+            ]
+          ]
+        ],
+        "provider_candidate": "aws"
+      }
+    },
+    {
+      "authority": "observed",
+      "evidence_class": "tls_provider_marker",
+      "layer": "serving",
+      "source": "target",
+      "value": {
+        "layer": "serving",
+        "provider_candidate": "aws"
+      }
+    },
+    {
+      "authority": "observed",
+      "evidence_class": "http",
+      "source": "target",
+      "value": {
+        "body_sha256": "sha256:1853db0fa7a1547fd6c260f181a52e1b0a4fec81fc40f0255429e43132a3804e",
+        "final_url": "https://mcp.marcopolo.dev/",
+        "headers": {
+          "server": "uvicorn"
+        },
+        "status": 401
+      }
+    },
+    {
+      "authority": "observed",
+      "evidence_class": "http_server",
+      "layer": "application",
+      "source": "target",
+      "value": {
+        "layer": "application",
+        "provider_candidate": "uvicorn"
+      }
+    }
+  ],
+  "probe_kind": "hosting-identify",
+  "provider_candidates": [
+    {
+      "evidence_classes": [
+        "network_provider_range",
+        "tls_provider_marker"
+      ],
+      "provider": "aws"
+    },
+    {
+      "evidence_classes": [
+        "http_server"
+      ],
+      "provider": "uvicorn"
+    }
+  ],
+  "raw_hashes": [
+    "sha256:1496d949af85abc110ab807d13d54bc0db67156e1378a3f33b191c4c35f6b20b",
+    "sha256:1853db0fa7a1547fd6c260f181a52e1b0a4fec81fc40f0255429e43132a3804e"
+  ],
+  "reference_sources": [],
+  "schema_version": 1,
+  "target": "mcp.marcopolo.dev"
+}

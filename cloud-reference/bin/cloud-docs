@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+import argparse, json, os, sys
+ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT,'lib'))
+from mcp import check_source, query_reference
+
+prog=os.path.basename(sys.argv[0])
+p=argparse.ArgumentParser()
+if prog == 'mcp-registry-check':
+    p.add_argument('source')
+    a=p.parse_args()
+    result=check_source(a.source)
+elif prog == 'cloud-docs':
+    p.add_argument('provider')
+    p.add_argument('query')
+    a=p.parse_args()
+    result=query_reference(a.provider,a.query,mode='docs')
+else:
+    p.add_argument('provider')
+    p.add_argument('observation')
+    a=p.parse_args()
+    result=query_reference(a.provider,a.observation,mode='waf')
+print(json.dumps(result,sort_keys=True,separators=(',',':')))
+raise SystemExit(0 if result.get('failure') is None else 3)

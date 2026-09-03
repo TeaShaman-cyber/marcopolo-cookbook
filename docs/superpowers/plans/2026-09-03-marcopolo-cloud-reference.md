@@ -39,7 +39,9 @@
 - [ ] **Step 1: Write failing unit tests for the receipt envelope and classification floor**
 
 ```python
-from cloud_reference.lib.evidence import new_receipt, add_observation, classify_provider
+import sys
+sys.path.insert(0, "cloud-reference/lib")
+from evidence import new_receipt, add_observation, classify_provider
 
 
 def test_single_signal_cannot_be_likely():
@@ -103,7 +105,9 @@ git commit -m "feat: add cloud reference evidence model"
 - [ ] **Step 1: Write failing tests for hostname validation and provider-classification invariants**
 
 ```python
-from cloud_reference.lib.hosting import validate_hostname
+import sys
+sys.path.insert(0, "cloud-reference/lib")
+from hosting import validate_hostname
 
 
 def test_rejects_url_and_shell_text():
@@ -167,7 +171,9 @@ git commit -m "feat: add passive hosting identification"
 - [ ] **Step 1: Write failing tests that reject unreviewed sources from execution**
 
 ```python
-from cloud_reference.lib.sources import executable_sources
+import sys
+sys.path.insert(0, "cloud-reference/lib")
+from sources import executable_sources
 
 
 def test_only_reviewed_sources_are_executable():
@@ -217,7 +223,9 @@ git commit -m "feat: register reviewed cloud reference sources"
 - [ ] **Step 1: Write failing tests for command construction and defensive query boundaries**
 
 ```python
-from cloud_reference.lib.mcp import build_reference_query
+import sys
+sys.path.insert(0, "cloud-reference/lib")
+from mcp import build_reference_query
 
 
 def test_waf_reference_rejects_bypass_intent():

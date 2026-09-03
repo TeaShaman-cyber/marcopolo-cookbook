@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "name": "cloudflare-docs",
+      "endpoint": "https://docs.mcp.cloudflare.com/mcp",
+      "domain": "cloudflare",
+      "state": "REVIEWED_REFERENCE_SOURCE",
+      "last_verified": "2026-09-03",
+      "evidence_note": "Anonymous initialize/tools-list verified live today; prior bounded anonymous documentation execution verified in this research thread."
+    },
+    {
+      "name": "aws-knowledge",
+      "endpoint": "https://knowledge-mcp.global.api.aws",
+      "domain": "aws",
+      "state": "REVIEWED_REFERENCE_SOURCE",
+      "last_verified": "2026-09-03",
+      "evidence_note": "Anonymous initialize/tools-list verified live today; prior bounded anonymous AWS documentation execution verified in this research thread."
+    },
+    {
+      "name": "microsoft-learn",
+      "endpoint": "https://learn.microsoft.com/api/mcp",
+      "domain": "microsoft",
+      "state": "REVIEWED_REFERENCE_SOURCE",
+      "last_verified": "2026-09-03",
+      "evidence_note": "Anonymous initialize/tools-list verified live today; prior bounded anonymous Microsoft documentation execution verified in this research thread."
+    },
+    {
+      "name": "context7",
+      "endpoint": "https://mcp.context7.com/mcp",
+      "domain": "general-docs",
+      "state": "REVIEWED_REFERENCE_SOURCE",
+      "last_verified": "2026-09-03",
+      "evidence_note": "Anonymous initialize/tools-list verified live today; prior end-to-end documentation execution verified with source URLs in this research thread."
+    },
+    {
+      "name": "datakoot-domain-intel",
+      "endpoint": "https://domain.datakoot.com/mcp",
+      "domain": "domain-dns-rdap-tech",
+      "state": "REVIEWED_REFERENCE_SOURCE",
+      "last_verified": "2026-09-03",
+      "evidence_note": "Anonymous initialize/tools-list and bounded dns_lookup plus tech_stack execution verified against mcp.marcopolo.dev."
+    },
+    {
+      "name": "wwhois",
+      "endpoint": "https://wwhois.ru/backend/mcp",
+      "domain": "whois-rdap-ip-geolocation",
+      "state": "REVIEWED_REFERENCE_SOURCE",
+      "last_verified": "2026-09-03",
+      "evidence_note": "Anonymous initialize/tools-list, RDAP lookup for marcopolo.dev, and IP geolocation for both observed MarcoPolo addresses verified live."
+    },
+    {
+      "name": "whoisgenius",
+      "endpoint": "https://api.whoisgeni.us/mcp",
+      "domain": "domain-attribution",
+      "state": "EXECUTION_AUTH_REQUIRED",
+      "last_verified": "2026-09-03",
+      "evidence_note": "Anonymous initialize/tools-list succeeded; bounded analyze_domain execution returned authentication required with X-API-Key."
+    },
+    {
+      "name": "whois-ddnsip",
+      "endpoint": "https://whois.ddnsip.cn/mcp",
+      "domain": "whois-rdap-ip-asn",
+      "state": "CONTROL_PLANE_BLOCKED",
+      "last_verified": "2026-09-03",
+      "evidence_note": "Anonymous MCP initialize was blocked before MCP execution by Cloudflare Error 1010 browser_signature_banned."
+    }
+  ]
+}
