@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+import argparse
+import json
+import os
+import sys
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(ROOT, 'lib'))
+from hosting import build_hosting_receipt
+
+parser = argparse.ArgumentParser()
+parser.add_argument('hostname')
+parser.add_argument('--label')
+parser.add_argument('--timeout', type=float, default=5.0)
+args = parser.parse_args()
+
+try:
+    receipt = build_hosting_receipt(args.hostname, timeout=max(1.0, min(args.timeout, 15.0)))
+    if args.label:
+        receipt['observation_label'] = args.label
+    print(json.dumps(receipt, sort_keys=True, separators=(',', ':')))
+except Exception as exc:
+    print(json.dumps({'failure': {'type': 'LOCAL_RUNTIME_ERROR', 'message': str(exc)}}))
+    raise SystemExit(2)
