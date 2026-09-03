@@ -10,6 +10,15 @@ class MCPTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             build_reference_query('cloudflare', 'how to bypass waf filtering', mode='waf')
 
+    def test_waf_reference_allows_explicit_no_bypass_language(self):
+        for text in [
+            'diagnose false-positive filtering, not bypass',
+            'diagnose false-positive filtering without bypass',
+            'diagnose false-positive filtering; do not bypass controls',
+        ]:
+            query=build_reference_query('aws', text, mode='waf')
+            self.assertIn('Defensive diagnostic', query)
+
     def test_waf_reference_accepts_false_positive_diagnostics(self):
         query=build_reference_query('cloudflare', 'documented causes of false-positive 403 filtering', mode='waf')
         self.assertIn('false-positive', query)

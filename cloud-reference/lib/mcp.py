@@ -9,6 +9,7 @@ from evidence import bounded_sha256, new_receipt
 from sources import executable_sources, load_reviewed_sources
 
 BLOCKED_WAF_TERMS = re.compile(r'\b(bypass|evade|evasion|circumvent|disable|defeat)\b', re.I)
+SAFE_NEGATED_WAF_PHRASES = re.compile(r'\b(?:not|without|do\s+not)\s+bypass\b', re.I)
 ROUTES = {
     'cloudflare': ('cloudflare-docs', 'search_cloudflare_documentation', 'query'),
     'aws': ('aws-knowledge', 'aws___search_documentation', 'search_phrase'),
@@ -27,7 +28,8 @@ def build_reference_query(provider, observation, mode='docs'):
     if not isinstance(observation, str) or not observation.strip():
         raise ValueError('observation is required')
     if mode == 'waf':
-        if BLOCKED_WAF_TERMS.search(observation):
+        safety_text=SAFE_NEGATED_WAF_PHRASES.sub('', observation)
+        if BLOCKED_WAF_TERMS.search(safety_text):
             raise ValueError('bypass/evasion intent is not allowed')
         return f'Defensive diagnostic documentation for {provider}: {observation}. Focus on documented false positives, status codes, logging, and supported troubleshooting.'
     if mode != 'docs':
