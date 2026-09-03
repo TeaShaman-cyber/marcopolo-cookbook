@@ -95,3 +95,57 @@ def classify_provider(receipt):
         for name, classes in sorted(grouped.items())
     ]
     return result
+
+
+LAYER_NAMES = {'serving', 'dns', 'registrar', 'application'}
+
+def add_layer_evidence(receipt, layer, evidence_class, source, provider, authority='observed', value=None):
+    if layer not in LAYER_NAMES:
+        raise ValueError('invalid layer')
+    payload = {'provider_candidate': str(provider).lower(), 'layer': layer}
+    if value is not None:
+        payload['detail'] = value
+    obs = add_observation(receipt, evidence_class, source, payload, authority=authority)
+    obs['layer'] = layer
+    return obs
+
+def classify_layers(receipt):
+    grouped = {}
+    authoritative = {}
+    for obs in receipt.get('observations', []):
+        value = obs.get('value')
+        layer = obs.get('layer')
+        if not layer and isinstance(value, dict):
+            layer = value.get('layer')
+        if layer not in LAYER_NAMES:
+            continue
+        candidate = _candidate_from(obs)
+        if not candidate:
+            continue
+        grouped.setdefault(layer, {}).setdefault(candidate, set()).add(obs.get('evidence_class'))
+        if obs.get('authority') == 'provider_owned':
+            authoritative.setdefault(layer, set()).add(candidate)
+    layers = {}
+    for layer, candidates in grouped.items():
+        candidate, classes = sorted(candidates.items(), key=lambda item: (-len(item[1]), item[0]))[0]
+        count = len(classes)
+        if layer == 'application':
+            classification, confidence = 'OBSERVED_COMPONENT', 0.6
+        elif count >= 2 and candidate in authoritative.get(layer, set()):
+            classification, confidence = 'VERIFIED_PROVIDER', min(1.0, 0.8 + 0.05 * (count - 2))
+        elif count >= 2:
+            classification, confidence = 'LIKELY_PROVIDER', min(0.79, 0.5 + 0.1 * (count - 2))
+        else:
+            classification, confidence = 'INSUFFICIENT_EVIDENCE', 0.25
+        layers[layer] = {'provider': candidate, 'classification': classification, 'confidence': confidence, 'evidence_classes': sorted(c for c in classes if c)}
+    infra = {entry['provider'] for name, entry in layers.items() if name in {'serving','dns','registrar'} and entry.get('provider')}
+    if len(infra) > 1:
+        receipt['classification'], receipt['confidence'] = 'MULTI_PROVIDER_OR_PROXY', 0.75
+    elif 'serving' in layers:
+        receipt['classification'], receipt['confidence'] = layers['serving']['classification'], layers['serving']['confidence']
+    elif layers:
+        receipt['classification'], receipt['confidence'] = 'INSUFFICIENT_EVIDENCE', 0.25
+    else:
+        receipt['classification'], receipt['confidence'] = 'INSUFFICIENT_EVIDENCE', 0.0
+    receipt['layers'] = layers
+    return layers

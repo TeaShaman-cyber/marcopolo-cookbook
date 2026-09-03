@@ -35,3 +35,25 @@ class EvidenceTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class LayeredAttributionTests(unittest.TestCase):
+    def test_layered_attribution_keeps_serving_and_dns_providers_separate(self):
+        from evidence import add_layer_evidence, classify_layers
+        receipt = new_receipt('mcp.marcopolo.dev', 'hosting-identify', '2026-09-03T00:00:00Z')
+        add_layer_evidence(receipt, 'serving', 'network_provider_range', 'aws-ip-ranges', 'aws', authority='provider_owned')
+        add_layer_evidence(receipt, 'serving', 'tls_provider_marker', 'target', 'aws')
+        add_layer_evidence(receipt, 'dns', 'rdap_nameserver', 'wwhois', 'cloudflare', authority='registry_owned')
+        layers = classify_layers(receipt)
+        self.assertEqual(layers['serving']['provider'], 'aws')
+        self.assertEqual(layers['serving']['classification'], 'VERIFIED_PROVIDER')
+        self.assertEqual(layers['dns']['provider'], 'cloudflare')
+        self.assertEqual(receipt['classification'], 'MULTI_PROVIDER_OR_PROXY')
+
+    def test_application_layer_does_not_claim_hosting_provider(self):
+        from evidence import add_layer_evidence, classify_layers
+        receipt = new_receipt('mcp.marcopolo.dev', 'hosting-identify', '2026-09-03T00:00:00Z')
+        add_layer_evidence(receipt, 'application', 'http_server', 'target', 'uvicorn')
+        layers = classify_layers(receipt)
+        self.assertEqual(layers['application']['classification'], 'OBSERVED_COMPONENT')
+        self.assertEqual(receipt['classification'], 'INSUFFICIENT_EVIDENCE')

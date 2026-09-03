@@ -6,7 +6,12 @@ VALID_STATES = {
     'LIVE_METADATA_VERIFIED',
     'ANONYMOUS_EXECUTION_VERIFIED',
     'REVIEWED_REFERENCE_SOURCE',
+    'EXECUTION_AUTH_REQUIRED',
+    'CONTROL_PLANE_BLOCKED',
 }
+
+def validate_source_state(state):
+    return state in VALID_STATES
 REQUIRED = {'name','endpoint','domain','state','last_verified','evidence_note'}
 
 

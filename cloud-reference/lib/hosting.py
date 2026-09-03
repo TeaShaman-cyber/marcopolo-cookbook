@@ -8,7 +8,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from evidence import add_observation, bounded_sha256, classify_provider, new_receipt
+from evidence import add_layer_evidence, add_observation, bounded_sha256, classify_layers, classify_provider, new_receipt
 
 HOST_RE = re.compile(r'^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$')
 SAFE_HEADERS = {'server','via','x-vercel-id','cf-ray','cf-cache-status','x-powered-by','x-request-id','fly-request-id'}
@@ -166,6 +166,7 @@ def build_hosting_receipt(hostname, timeout=5, observation_time=None):
             matches=match_aws_ranges(ips, aws_ranges)
             if matches:
                 add_observation(receipt,'network_provider_range','aws-ip-ranges',{'provider_candidate':'aws','matches':matches,'createDate':aws_ranges.get('createDate')},authority='provider_owned')
+                add_layer_evidence(receipt,'serving','network_provider_range','aws-ip-ranges','aws',authority='provider_owned')
         except Exception as range_exc:
             add_observation(receipt,'network_provider_range','aws-ip-ranges',{'error':str(range_exc)},authority='observed')
     except Exception as e:
@@ -177,12 +178,16 @@ def build_hosting_receipt(hostname, timeout=5, observation_time=None):
         tls_candidate=tls_provider_candidate(tls)
         if tls_candidate:
             add_observation(receipt,'tls_provider_marker','target',{'provider_candidate':tls_candidate,'issuer':tls.get('issuer')},authority='observed')
+            add_layer_evidence(receipt,'serving','tls_provider_marker','target',tls_candidate)
     except Exception as e:
         add_observation(receipt,'tls','target',{'error':str(e)})
     try:
         http=collect_http(hostname,timeout=timeout)
         add_observation(receipt,'http','target',http)
         receipt['raw_hashes'].append(http['body_sha256'])
+        server_component=http.get('headers',{}).get('server')
+        if server_component:
+            add_layer_evidence(receipt,'application','http_server','target',server_component)
         for header in http['headers']:
             cand=detect_provider_candidate('header',header)
             if cand:
@@ -191,4 +196,5 @@ def build_hosting_receipt(hostname, timeout=5, observation_time=None):
     except Exception as e:
         receipt['failure']={'type':'TARGET_HTTP_ERROR','message':str(e)}
     classify_provider(receipt)
+    classify_layers(receipt)
     return receipt

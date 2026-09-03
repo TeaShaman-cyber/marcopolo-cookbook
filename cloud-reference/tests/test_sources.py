@@ -25,3 +25,12 @@ class SourcesTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class SourceStateTests(unittest.TestCase):
+    def test_nonexecutable_negative_states_are_valid_but_not_routable(self):
+        from sources import validate_source_state
+        for state in ['EXECUTION_AUTH_REQUIRED', 'CONTROL_PLANE_BLOCKED']:
+            self.assertTrue(validate_source_state(state))
+        sources=[{'name':'auth','state':'EXECUTION_AUTH_REQUIRED'},{'name':'blocked','state':'CONTROL_PLANE_BLOCKED'},{'name':'reviewed','state':'REVIEWED_REFERENCE_SOURCE'}]
+        self.assertEqual([s['name'] for s in executable_sources(sources)], ['reviewed'])
