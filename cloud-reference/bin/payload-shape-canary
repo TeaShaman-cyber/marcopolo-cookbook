@@ -1,0 +1,12 @@
+#!/usr/bin/env python3
+import json
+
+print(json.dumps({
+  'schema_version': 1,
+  'semantic_result': 'cloudref-canary',
+  'cases': [
+    {'id':'literal','command':"printf 'cloudref-canary\\n'"},
+    {'id':'variable','command':"value=cloudref-canary; printf '%s\\n' \"$value\""},
+    {'id':'python','command':"python3 -c \"print('cloudref-canary')\""}
+  ]
+}, sort_keys=True, separators=(',',':')))
