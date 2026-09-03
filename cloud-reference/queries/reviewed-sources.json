@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "sources": [
+    {
+      "name": "cloudflare-docs",
+      "endpoint": "https://docs.mcp.cloudflare.com/mcp",
+      "domain": "cloudflare",
+      "state": "REVIEWED_REFERENCE_SOURCE",
+      "last_verified": "2026-09-03",
+      "evidence_note": "Anonymous initialize/tools-list verified live today; prior bounded anonymous documentation execution verified in this research thread."
+    },
+    {
+      "name": "aws-knowledge",
+      "endpoint": "https://knowledge-mcp.global.api.aws",
+      "domain": "aws",
+      "state": "REVIEWED_REFERENCE_SOURCE",
+      "last_verified": "2026-09-03",
+      "evidence_note": "Anonymous initialize/tools-list verified live today; prior bounded anonymous AWS documentation execution verified in this research thread."
+    },
+    {
+      "name": "microsoft-learn",
+      "endpoint": "https://learn.microsoft.com/api/mcp",
+      "domain": "microsoft",
+      "state": "REVIEWED_REFERENCE_SOURCE",
+      "last_verified": "2026-09-03",
+      "evidence_note": "Anonymous initialize/tools-list verified live today; prior bounded anonymous Microsoft documentation execution verified in this research thread."
+    },
+    {
+      "name": "context7",
+      "endpoint": "https://mcp.context7.com/mcp",
+      "domain": "general-docs",
+      "state": "REVIEWED_REFERENCE_SOURCE",
+      "last_verified": "2026-09-03",
+      "evidence_note": "Anonymous initialize/tools-list verified live today; prior end-to-end documentation execution verified with source URLs in this research thread."
+    }
+  ]
+}
