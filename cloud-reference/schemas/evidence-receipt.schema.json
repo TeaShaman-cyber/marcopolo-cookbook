@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MarcoPolo cloud-reference evidence receipt",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "target",
+    "observation_time",
+    "probe_kind",
+    "observations",
+    "reference_sources",
+    "provider_candidates",
+    "classification",
+    "confidence",
+    "raw_hashes",
+    "failure"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "target": {"type": "string", "minLength": 1},
+    "observation_time": {"type": "string", "minLength": 1},
+    "probe_kind": {"enum": ["hosting-identify", "cloud-docs", "waf-reference", "mcp-registry-check", "payload-shape-canary"]},
+    "observations": {"type": "array"},
+    "reference_sources": {"type": "array"},
+    "provider_candidates": {"type": "array"},
+    "classification": {"enum": ["VERIFIED_PROVIDER", "LIKELY_PROVIDER", "MULTI_PROVIDER_OR_PROXY", "INSUFFICIENT_EVIDENCE"]},
+    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+    "raw_hashes": {"type": "array", "items": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"}},
+    "failure": {"type": ["object", "null"]}
+  },
+  "additionalProperties": false
+}
