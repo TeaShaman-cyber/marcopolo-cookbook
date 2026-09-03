@@ -31,3 +31,15 @@ A long `workspace_shell` request that combined several harmless file writes, tes
 The same safe work was then decomposed into smaller connector requests. Receipt creation, documentation writes, individual acceptance-script fragments, and execution of the fully assembled script all succeeded. The final acceptance script passed 18 tests.
 
 Classification: `PAYLOAD_SHAPE_SENSITIVE_CONTROL_PLANE_FILTERING` at the serialized batch/composition level. The exact triggering token sequence is unknown, so this observation does not identify a particular WAF product or filtering rule.
+
+## Cross-call uncommitted worktree persistence anomaly
+
+During layered-attribution development, source and test edits passed in one `workspace_shell` invocation but were absent in a later invocation while Git HEAD and reflog had not moved. Changes committed inside the same successful invocation persisted reliably across later calls.
+
+Operational rule for this surface:
+
+```text
+mutation -> verification -> commit in the same workspace_shell call
+```
+
+Until the persistence boundary is better understood, an uncommitted GREEN working tree is not treated as durable evidence across connector calls. This is a MarcoPolo workspace/control-surface observation, not a Git semantic claim.

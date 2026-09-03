@@ -2,7 +2,26 @@
   "classification": "VERIFIED_PROVIDER",
   "confidence": 0.8,
   "failure": null,
-  "observation_time": "2026-09-03T10:18:18Z",
+  "layers": {
+    "application": {
+      "classification": "OBSERVED_COMPONENT",
+      "confidence": 0.6,
+      "evidence_classes": [
+        "http_server"
+      ],
+      "provider": "uvicorn"
+    },
+    "serving": {
+      "classification": "VERIFIED_PROVIDER",
+      "confidence": 0.8,
+      "evidence_classes": [
+        "network_provider_range",
+        "tls_provider_marker"
+      ],
+      "provider": "aws"
+    }
+  },
+  "observation_time": "2026-09-03T10:26:08Z",
   "observations": [
     {
       "authority": "observed",
@@ -59,6 +78,16 @@
             "service": "EC2"
           }
         ],
+        "provider_candidate": "aws"
+      }
+    },
+    {
+      "authority": "provider_owned",
+      "evidence_class": "network_provider_range",
+      "layer": "serving",
+      "source": "aws-ip-ranges",
+      "value": {
+        "layer": "serving",
         "provider_candidate": "aws"
       }
     },
@@ -136,15 +165,35 @@
     },
     {
       "authority": "observed",
+      "evidence_class": "tls_provider_marker",
+      "layer": "serving",
+      "source": "target",
+      "value": {
+        "layer": "serving",
+        "provider_candidate": "aws"
+      }
+    },
+    {
+      "authority": "observed",
       "evidence_class": "http",
       "source": "target",
       "value": {
-        "body_sha256": "sha256:02eca0e75e317915e701419027b43f88aba82a9c5de052283513107f95db8687",
+        "body_sha256": "sha256:1853db0fa7a1547fd6c260f181a52e1b0a4fec81fc40f0255429e43132a3804e",
         "final_url": "https://mcp.marcopolo.dev/",
         "headers": {
           "server": "uvicorn"
         },
         "status": 401
+      }
+    },
+    {
+      "authority": "observed",
+      "evidence_class": "http_server",
+      "layer": "application",
+      "source": "target",
+      "value": {
+        "layer": "application",
+        "provider_candidate": "uvicorn"
       }
     }
   ],
@@ -156,11 +205,17 @@
         "tls_provider_marker"
       ],
       "provider": "aws"
+    },
+    {
+      "evidence_classes": [
+        "http_server"
+      ],
+      "provider": "uvicorn"
     }
   ],
   "raw_hashes": [
     "sha256:1496d949af85abc110ab807d13d54bc0db67156e1378a3f33b191c4c35f6b20b",
-    "sha256:02eca0e75e317915e701419027b43f88aba82a9c5de052283513107f95db8687"
+    "sha256:1853db0fa7a1547fd6c260f181a52e1b0a4fec81fc40f0255429e43132a3804e"
   ],
   "reference_sources": [],
   "schema_version": 1,
