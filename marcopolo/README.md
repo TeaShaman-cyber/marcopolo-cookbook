@@ -107,21 +107,27 @@ When the payload itself contains Markdown, JSON, regular expressions, nested cod
 Python example:
 
 ```bash
-printf '%s' '<base64-payload>' | base64 -d > /tmp/task.py
-python3 -m py_compile /tmp/task.py
-sha256sum /tmp/task.py
-python3 /tmp/task.py
-rm -f /tmp/task.py
+set -euo pipefail
+TARGET=/tmp/task.py
+EXPECTED_SHA256='<sender-side-sha256>'
+trap 'rm -f "$TARGET"' EXIT
+printf '%s' '<base64-payload>' | base64 -d > "$TARGET"
+printf '%s  %s\n' "$EXPECTED_SHA256" "$TARGET" | sha256sum -c -
+python3 -m py_compile "$TARGET"
+python3 "$TARGET"
 ```
 
 Shell example:
 
 ```bash
-printf '%s' '<base64-payload>' | base64 -d > /tmp/task.sh
-bash -n /tmp/task.sh
-sha256sum /tmp/task.sh
-bash /tmp/task.sh
-rm -f /tmp/task.sh
+set -euo pipefail
+TARGET=/tmp/task.sh
+EXPECTED_SHA256='<sender-side-sha256>'
+trap 'rm -f "$TARGET"' EXIT
+printf '%s' '<base64-payload>' | base64 -d > "$TARGET"
+printf '%s  %s\n' "$EXPECTED_SHA256" "$TARGET" | sha256sum -c -
+bash -n "$TARGET"
+bash "$TARGET"
 ```
 
 For multi-file edits, transport one small deterministic Python script and let it write exact files with `pathlib.Path.write_text()` or apply bounded transformations.
@@ -132,7 +138,7 @@ Rules:
 - Base64 expands data by roughly one third. Use it for text-sized payloads; use artifact/file transfer paths for large files or binaries.
 - Decode into an explicit temporary or target path; do not execute directly from the decoding pipeline.
 - Verify syntax/static validity before execution (`python3 -m py_compile`, `bash -n`, JSON parse, etc.).
-- For exact file delivery, verify resulting bytes with `sha256sum` or equivalent and read back important content before use.
+- For exact file delivery, compare the decoded bytes against a sender-side expected digest (for example with `sha256sum -c`) before use; printing a digest is not verification.
 - Keep transported scripts bounded and deterministic; print changed paths or hashes when useful.
 - After mutation, independently verify the authoritative target state and remove temporary transport files when no longer needed.
 
