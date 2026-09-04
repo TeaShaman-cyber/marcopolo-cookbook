@@ -12,3 +12,10 @@ grep -q 'mv "$ARCHIVE_TMP" "$ARCHIVE"' mcporter/scripts/install-runtime.sh
 grep -q 'mv "$SHA_TMP" "$SHA_FILE"' mcporter/scripts/install-runtime.sh
 bash mcporter/tests/test_inventory_provenance.sh >/dev/null
 echo PASS
+# Acceptance must not independently read the archive/checksum publication pair.
+# ensure-runtime.sh is the coordinated reader and owns publication locking.
+if grep -q 'sha256sum' mcporter/tests/acceptance.sh; then
+  echo 'FAIL: acceptance bypasses coordinated archive reader' >&2
+  exit 1
+fi
+grep -Fq 'CACHE="$("$ROOT/scripts/ensure-runtime.sh")"' mcporter/tests/acceptance.sh
