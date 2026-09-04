@@ -85,6 +85,43 @@ class RuntimeConcurrencyTest(unittest.TestCase):
                 ).is_file()
             )
 
+    def test_cache_root_is_private_before_cached_executables_run(self):
+        with tempfile.TemporaryDirectory() as td_s:
+            td = pathlib.Path(td_s)
+            tool, bundles, stage = self._fixture(td)
+            archive = build_archive(bundles, stage)
+            digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+            (bundles / "test-bundle.tar.gz.sha256").write_text(
+                f"{digest}  test-bundle.tar.gz\n"
+            )
+
+            tmpdir = td / "tmp"
+            uid = os.getuid()
+            cache_root = tmpdir / f"marcopolo-mcporter-{uid}"
+            cache = cache_root / "test-bundle"
+            fake_node = cache / "node" / "bin" / "node"
+            fake_cli = cache / "workbench" / "node_modules" / "mcporter" / "dist" / "cli.js"
+            fake_node.parent.mkdir(parents=True)
+            fake_cli.parent.mkdir(parents=True)
+            marker = td / "fake-node-ran"
+            fake_node.write_text(
+                '#!/usr/bin/env bash\nprintf x > "' + str(marker) + '"\n'
+                'if [[ "$1" == "--version" ]]; then echo v-test; else echo 0.test; fi\n'
+            )
+            fake_node.chmod(0o755)
+            fake_cli.write_text("")
+            cache_root.chmod(0o777)
+
+            env = os.environ.copy()
+            env["MCPORTER_ROOT"] = str(tool)
+            env["TMPDIR"] = str(tmpdir)
+            proc = subprocess.run(
+                [str(ENSURE)], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env
+            )
+
+            self.assertNotEqual(proc.returncode, 0, "insecure pre-existing cache root was accepted")
+            self.assertFalse(marker.exists(), "pre-planted cache executable ran before cache root trust was established")
+
     def test_reader_waits_for_consistent_publication_pair(self):
         with tempfile.TemporaryDirectory() as td_s:
             td = pathlib.Path(td_s)

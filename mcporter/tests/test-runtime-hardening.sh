@@ -19,3 +19,5 @@ if grep -q 'sha256sum' mcporter/tests/acceptance.sh; then
   exit 1
 fi
 grep -Fq 'CACHE="$("$ROOT/scripts/ensure-runtime.sh")"' mcporter/tests/acceptance.sh
+# Acceptance must verify the committed rebuild input even when a warm runtime cache exists.
+grep -Fq '[[ -f "$ROOT/package-lock.json" ]]' mcporter/tests/acceptance.sh

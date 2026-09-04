@@ -6,7 +6,26 @@ ROOT="${MCPORTER_ROOT:-/workspace/tools/mcporter}"
 BUNDLES="$ROOT/runtime/bundles"
 ARCHIVE="$BUNDLES/$RUNTIME_BUNDLE.tar.gz"
 SHA_FILE="$ARCHIVE.sha256"
-CACHE_ROOT="${TMPDIR:-/tmp}/marcopolo-mcporter"
+TMP_BASE="${TMPDIR:-/tmp}"
+UID_ACTUAL="$(id -u)"
+CACHE_ROOT="$TMP_BASE/marcopolo-mcporter-$UID_ACTUAL"
+
+mkdir -p "$TMP_BASE"
+if [[ -L "$CACHE_ROOT" ]]; then
+  echo "FAIL: cache root must not be a symlink: $CACHE_ROOT" >&2
+  exit 1
+fi
+if [[ ! -e "$CACHE_ROOT" ]]; then
+  if ! mkdir -m 700 "$CACHE_ROOT" 2>/dev/null; then
+    [[ -d "$CACHE_ROOT" ]] || { echo "FAIL: cannot create cache root: $CACHE_ROOT" >&2; exit 1; }
+  fi
+fi
+[[ -d "$CACHE_ROOT" ]] || { echo "FAIL: cache root is not a directory: $CACHE_ROOT" >&2; exit 1; }
+CACHE_OWNER="$(stat -c '%u' "$CACHE_ROOT")"
+CACHE_MODE="$(stat -c '%a' "$CACHE_ROOT")"
+[[ "$CACHE_OWNER" == "$UID_ACTUAL" ]] || { echo "FAIL: cache root owner mismatch: $CACHE_ROOT" >&2; exit 1; }
+[[ "$CACHE_MODE" == "700" ]] || { echo "FAIL: cache root mode must be 700: $CACHE_ROOT" >&2; exit 1; }
+
 CACHE="$CACHE_ROOT/$RUNTIME_BUNDLE"
 NODE="$CACHE/node/bin/node"
 CLI="$CACHE/workbench/node_modules/mcporter/dist/cli.js"
@@ -36,7 +55,6 @@ flock 8
 }
 (cd "$BUNDLES" && sha256sum -c "$(basename "$SHA_FILE")" >/dev/null)
 
-mkdir -p "$CACHE_ROOT"
 LOCK_FILE="$CACHE_ROOT/.${RUNTIME_BUNDLE}.lock"
 exec 9>"$LOCK_FILE"
 flock 9

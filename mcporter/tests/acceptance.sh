@@ -6,6 +6,7 @@ ROOT=/workspace/tools/mcporter
 [[ -x "$ROOT/bin/mcporter" ]] || { echo "FAIL: wrapper missing"; exit 1; }
 [[ -x "$ROOT/scripts/install-runtime.sh" ]] || { echo "FAIL: installer missing"; exit 1; }
 [[ -x "$ROOT/scripts/ensure-runtime.sh" ]] || { echo "FAIL: cache loader missing"; exit 1; }
+[[ -f "$ROOT/package-lock.json" ]] || { echo "FAIL: package-lock.json missing"; exit 1; }
 CACHE="$("$ROOT/scripts/ensure-runtime.sh")"
 NODE_ACTUAL="$("$CACHE/node/bin/node" --version)"
 MCPORTER_ACTUAL="$("$ROOT/bin/mcporter" --version)"
