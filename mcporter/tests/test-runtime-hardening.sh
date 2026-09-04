@@ -11,6 +11,12 @@ grep -q "SHA_TMP" mcporter/scripts/install-runtime.sh
 grep -q 'mv "$ARCHIVE_TMP" "$ARCHIVE"' mcporter/scripts/install-runtime.sh
 grep -q 'mv "$SHA_TMP" "$SHA_FILE"' mcporter/scripts/install-runtime.sh
 bash mcporter/tests/test_inventory_provenance.sh >/dev/null
+# Build-contract changes must invalidate archives/caches produced by the earlier npm-install bundle.
+. mcporter/runtime/versions.env
+case "$RUNTIME_BUNDLE" in
+  *-v2) ;;
+  *) echo "FAIL: runtime bundle revision must invalidate pre-lockfile v1 artifacts" >&2; exit 1 ;;
+esac
 echo PASS
 # Acceptance must not independently read the archive/checksum publication pair.
 # ensure-runtime.sh is the coordinated reader and owns publication locking.
