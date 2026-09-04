@@ -4,6 +4,6 @@
   "version": "0.1.0",
   "description": "Pinned MCP workbench for the persistent MarcoPolo runtime",
   "dependencies": {
-    "mcporter": "0.9.0"
+    "mcporter": "0.13.8"
   }
 }

@@ -83,6 +83,40 @@ gh pr edit 123 --body-file /tmp/body.md
 
 For large generated text, prefer a programmatic file write or a single interpolation-free payload rather than stacking `bash -lc` + heredoc + Markdown fences.
 
+### Base64 transport for scripts and generated files
+
+When the payload itself contains shell quotes, Markdown fences, JSON, regular expressions, or nested code, use base64 as a **transport encoding** so the outer shell does not reinterpret the payload.
+
+Python example:
+
+```bash
+printf '%s' '<base64-payload>' | base64 -d > /tmp/task.py
+python3 -m py_compile /tmp/task.py
+python3 /tmp/task.py
+rm -f /tmp/task.py
+```
+
+Shell example:
+
+```bash
+printf '%s' '<base64-payload>' | base64 -d > /tmp/task.sh
+bash -n /tmp/task.sh
+bash /tmp/task.sh
+rm -f /tmp/task.sh
+```
+
+For multi-file edits, a useful pattern is to transport one small Python script and let it write exact files with `pathlib.Path.write_text()` or apply deterministic transformations.
+
+Rules:
+
+- Base64 is transport encoding, **not encryption**. Never put secrets in a payload merely because it is encoded.
+- Decode into `/tmp` or another local temporary path first; do not execute directly from a pipeline.
+- Run an appropriate syntax/static check before execution (`python3 -m py_compile`, `bash -n`, etc.).
+- Keep the transported script bounded and deterministic; print changed paths or hashes when useful.
+- After mutation, verify the target state independently and remove the temporary script.
+
+This pattern is preferred when a direct heredoc would require multiple competing quote/interpolation layers.
+
 **Verification:** read the resulting file/issue/PR/comment back after write. For files, also hash them.
 
 ---
@@ -520,6 +554,7 @@ Never collapse metadata into capability authority.
 |---|---|---|---|
 | `sh: ... pipefail` | shell dialect | target logic broken | rerun explicitly under Bash |
 | Markdown executed as shell | quoting/heredoc layer | intended document concept wrong | discard partial output; rewrite interpolation-free |
+| inline JSON mangled before CLI parse | outer quoting/interpolation layer | target CLI or API broken | use file-backed args or base64 transport |
 | `workspace_shell` timeout | execution window / long command | underlying remote job failed | split calls; re-read target |
 | MarcoPolo `502` | connector/control plane | GitHub Action failed | query GitHub independently |
 | GitHub write `403` | connector/app authority | repository read-only everywhere | use governed `gh-write`; native readback |
@@ -695,3 +730,25 @@ git push origin main
 or prefix each command individually.
 
 Do not interpret the resulting unauthenticated/wrong-context `403` as evidence that repository permissions changed until the same operation is retried in the intended governed credential context.
+
+## 24. Use local temporary storage as a build/runtime proxy for heavy tool trees
+
+### Observed failure mode
+
+Large npm/runtime trees written directly under `/workspace` NFS produced multiple failure classes during the MCPJam and mcporter work: `ENOTEMPTY` during destructive cleanup, incomplete copied trees, and expensive recursive operations. The same package installation completed normally on local `/tmp`.
+
+### Accepted pattern
+
+```text
+local /tmp build/install
+        -> verify exact versions/content
+        -> persist one archive + checksum on /workspace NFS
+        -> expand archive into local /tmp cache at runtime
+        -> execute through a wrapper
+```
+
+Treat the NFS artifact as durable storage and `/tmp` as the execution/build filesystem. On executor restart the cache may disappear; the wrapper must reconstruct it from the persistent archive and verify it before use.
+
+Do not replace platform-owned runtimes merely to satisfy one tool. For mcporter, system Node 22 remains untouched while the wrapper uses a private Node 24 runtime recovered from the archive.
+
+This pattern is especially useful for npm/node_modules, large language runtimes, generated SDK trees, and other workloads with many small-file create/delete/rename operations.

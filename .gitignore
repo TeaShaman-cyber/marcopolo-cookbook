@@ -16,3 +16,5 @@ mcpjam/
 mcpjam-clean-*/
 mcpjam-lite-*/
 mcpjam-cli/wolfram-probe.json
+mcporter/runtime/*/
+mcporter/runtime/bundles/
