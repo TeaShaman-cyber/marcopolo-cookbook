@@ -23,6 +23,7 @@ A path, dependency, or artifact observed in one runtime is not assumed to exist 
 - [MarcoPolo field notes](marcopolo/README.md) — shell, connector, Git/GitHub, worktree, artifact, runtime, and MCP failure modes with verified workarounds.
 - [Session Search](session-search/README.md) — reconstruct prior session evidence from exported conversation history.
 - [mcporter workbench](mcporter/README.md) — bounded MCP client setup, inventory, probes, and acceptance checks.
+- [MCPJam CLI workbench](mcpjam-cli/README.md) — independent MCP transport/protocol diagnostics, probes, and Agent Skills inspection.
 - [Search helpers](search/README.md) — lightweight search tooling used in the workspace.
 - [Jester forum notes](jester-forum/README.md) — bounded forum workflow notes.
 
