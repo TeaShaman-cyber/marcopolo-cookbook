@@ -14,15 +14,15 @@
     {
       "period": "2026-09-03",
       "phase": "after_full_reauthorization",
-      "fact": "After revoke/reinstall/reconnect with all-repository read/write access, the native connector resolved the authenticated account and returned admin collaborator permission on a user-owned repository.",
-      "classification": "AUTHORITY_VISIBLE"
+      "fact": "After revoke/reinstall/reconnect with all-repository read/write access, the native connector resolved the authenticated account and returned the user's admin collaborator role on a user-owned repository. That role does not establish the connector token or GitHub App effective scopes.",
+      "classification": "IDENTITY_AND_COLLABORATOR_ROLE_VISIBLE"
     },
     {
       "period": "2026-09-03",
       "phase": "same_session_first_mutation",
       "fact": "The first harmless native write path did not reach a stable postcondition because the connector became unavailable/disabled rather than returning the earlier stable 403 class.",
       "control": "Governed GitHub CLI access remained usable against the same account/repository state.",
-      "classification": "CONNECTOR_DISAPPEARED_AFTER_AUTHORITY_VISIBLE"
+      "classification": "CONNECTOR_DISAPPEARED_AFTER_ROLE_VISIBLE"
     },
     {
       "period": "2026-09-03",
@@ -37,8 +37,9 @@
       "classification": "READBACK_PATH_DISAPPEARED"
     }
   ],
-  "inference": "Observed behavior is consistent with runtime/session-scoped connector state or authority instability, not a single static repository permission failure.",
+  "inference": "Observed behavior is consistent with runtime/session-scoped connector or tool-registry instability, but it does not rule out a static connector or GitHub App permission limitation. The governed CLI control demonstrates repository reachability through separate credentials, not native connector token authority.",
   "unknown": [
+    "Effective scopes/permissions of the native connector token or GitHub App at the failing operations.",
     "Whether tool loss is caused by MCP/tool registry refresh, GitHub App installation state propagation, connector authorization cache invalidation, or another platform layer.",
     "Whether the triggering operation matters or only exposes an already-stale connector state.",
     "Whether failure scope is chat/thread/runtime-specific or shared across concurrent sessions."
