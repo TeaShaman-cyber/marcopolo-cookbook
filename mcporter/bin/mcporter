@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+
 ROOT=/workspace/tools/mcporter
-exec "$ROOT/node_modules/.bin/mcporter" --config "$ROOT/config/mcporter.json" "$@"
+CACHE="$("$ROOT/scripts/ensure-runtime.sh")"
+exec "$CACHE/node/bin/node" "$CACHE/workbench/node_modules/mcporter/dist/cli.js" \
+  --config "$ROOT/config/mcporter.json" "$@"
