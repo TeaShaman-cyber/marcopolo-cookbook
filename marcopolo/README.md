@@ -85,13 +85,31 @@ For large generated text, prefer a programmatic file write or a single interpola
 
 ### Base64 transport for scripts and generated files
 
-When the payload itself contains shell quotes, Markdown fences, JSON, regular expressions, or nested code, use base64 as a **transport encoding** so the outer shell does not reinterpret the payload.
+Treat command-shaped control flow and exact payload delivery as different transport classes.
+
+**Default routing rule:**
+
+```text
+short argument-safe control-plane command
+-> plain shell
+
+multiline / structured / quoting-sensitive / exact-byte payload
+-> base64 on the first attempt
+-> decode to an explicit path
+-> verify bytes or syntax
+-> only then execute, mutate, or publish
+```
+
+Keep simple commands plain: `git status`, `git rev-parse`, `gh pr view`, `sha256sum`, test runners, and similarly short argument-safe invocations do not benefit from base64.
+
+When the payload itself contains Markdown, JSON, regular expressions, nested code, heredoc-like text, competing quote layers, or exact generated file bytes, prefer base64 **before the first `workspace_shell` attempt** rather than waiting for a composition-sensitive `403` or quoting failure. This is a transport choice, not an error-recovery trick.
 
 Python example:
 
 ```bash
 printf '%s' '<base64-payload>' | base64 -d > /tmp/task.py
 python3 -m py_compile /tmp/task.py
+sha256sum /tmp/task.py
 python3 /tmp/task.py
 rm -f /tmp/task.py
 ```
@@ -101,21 +119,24 @@ Shell example:
 ```bash
 printf '%s' '<base64-payload>' | base64 -d > /tmp/task.sh
 bash -n /tmp/task.sh
+sha256sum /tmp/task.sh
 bash /tmp/task.sh
 rm -f /tmp/task.sh
 ```
 
-For multi-file edits, a useful pattern is to transport one small Python script and let it write exact files with `pathlib.Path.write_text()` or apply deterministic transformations.
+For multi-file edits, transport one small deterministic Python script and let it write exact files with `pathlib.Path.write_text()` or apply bounded transformations.
 
 Rules:
 
-- Base64 is transport encoding, **not encryption**. Never put secrets in a payload merely because it is encoded.
-- Decode into `/tmp` or another local temporary path first; do not execute directly from a pipeline.
-- Run an appropriate syntax/static check before execution (`python3 -m py_compile`, `bash -n`, etc.).
-- Keep the transported script bounded and deterministic; print changed paths or hashes when useful.
-- After mutation, verify the target state independently and remove the temporary script.
+- Base64 is transport encoding, **not encryption or authorization**. Never put secrets in a payload merely because it is encoded.
+- Base64 expands data by roughly one third. Use it for text-sized payloads; use artifact/file transfer paths for large files or binaries.
+- Decode into an explicit temporary or target path; do not execute directly from the decoding pipeline.
+- Verify syntax/static validity before execution (`python3 -m py_compile`, `bash -n`, JSON parse, etc.).
+- For exact file delivery, verify resulting bytes with `sha256sum` or equivalent and read back important content before use.
+- Keep transported scripts bounded and deterministic; print changed paths or hashes when useful.
+- After mutation, independently verify the authoritative target state and remove temporary transport files when no longer needed.
 
-This pattern is preferred when a direct heredoc would require multiple competing quote/interpolation layers.
+A pre-execution HTML `403` from `workspace_shell` establishes a connector/control-plane failure, not target execution. If a plain command-shaped call fails that way, diagnose the boundary. If a complex payload was sent plain despite matching the rule above, retrying the same composed payload is the wrong fallback; switch to deterministic payload transport.
 
 **Verification:** read the resulting file/issue/PR/comment back after write. For files, also hash them.
 
