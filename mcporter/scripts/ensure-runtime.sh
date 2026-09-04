@@ -22,6 +22,14 @@ if valid_cache; then
   exit 0
 fi
 
+# Coordinate archive/checksum readers with install-runtime.sh publication.
+# The installer atomically renames each file while holding this lock; taking
+# the same lock prevents a reader from observing a mixed archive/checksum pair.
+mkdir -p "$BUNDLES"
+PUBLISH_LOCK="$BUNDLES/.${RUNTIME_BUNDLE}.publish.lock"
+exec 8>"$PUBLISH_LOCK"
+flock 8
+
 [[ -f "$ARCHIVE" && -f "$SHA_FILE" ]] || {
   echo "runtime archive missing; run $ROOT/scripts/install-runtime.sh" >&2
   exit 2
