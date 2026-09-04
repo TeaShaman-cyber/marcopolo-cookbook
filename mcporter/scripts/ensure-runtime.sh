@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT=/workspace/tools/mcporter
+ROOT="${MCPORTER_ROOT:-/workspace/tools/mcporter}"
 . "$ROOT/runtime/versions.env"
 BUNDLES="$ROOT/runtime/bundles"
 ARCHIVE="$BUNDLES/$RUNTIME_BUNDLE.tar.gz"
@@ -29,6 +29,15 @@ fi
 (cd "$BUNDLES" && sha256sum -c "$(basename "$SHA_FILE")" >/dev/null)
 
 mkdir -p "$CACHE_ROOT"
+LOCK_FILE="$CACHE_ROOT/.${RUNTIME_BUNDLE}.lock"
+exec 9>"$LOCK_FILE"
+flock 9
+
+# Another invocation may have published a valid cache while this process waited.
+if valid_cache; then
+  printf '%s\n' "$CACHE"
+  exit 0
+fi
 rm -rf "$CACHE"
 STAGE="$(mktemp -d "$CACHE_ROOT/.extract-XXXXXX")"
 trap 'rm -rf "$STAGE"' EXIT

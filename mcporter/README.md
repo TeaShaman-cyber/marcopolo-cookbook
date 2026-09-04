@@ -69,6 +69,7 @@ Do not infer `server absent` from one failed call. Distinguish configuration mis
 Large dependency trees should not be installed or replaced in place on `/workspace` NFS. Build the complete runtime in local `/tmp`, verify it there, persist one compressed archive plus SHA-256 under `runtime/bundles/`, and expand it back into `/tmp` on demand. This avoids npm cleanup races and silent partial NFS trees.
 
 The canonical installer is `scripts/install-runtime.sh`; cache restoration is `scripts/ensure-runtime.sh`. The exact Node version, Node upstream SHA-256, mcporter version, and bundle id are declared in `runtime/versions.env`.
+ Bundle rebuild copies the committed `package.json` and `package-lock.json` into the staging workbench and uses `npm ci`, so transitive dependency resolution is lockfile-controlled. Cold-cache restoration serializes per bundle and rechecks validity after acquiring the lock before replacing the cache.
 
 ## Upgrade rule
 

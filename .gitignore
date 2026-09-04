@@ -18,3 +18,6 @@ mcpjam-lite-*/
 mcpjam-cli/wolfram-probe.json
 mcporter/runtime/*/
 mcporter/runtime/bundles/
+
+# Private Session Search runtime binding.
+session-search/runtime.env
