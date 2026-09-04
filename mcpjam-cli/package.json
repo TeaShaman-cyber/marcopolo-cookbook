@@ -1,0 +1,9 @@
+{
+  "name": "marcopolo-mcpjam-cli-workbench",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Pinned MCPJam CLI workbench for MarcoPolo MCP diagnostics",
+  "dependencies": {
+    "@mcpjam/cli": "5.6.0"
+  }
+}

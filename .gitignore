@@ -10,3 +10,9 @@ venv/
 mcporter/traces/
 
 .worktrees/
+
+# Heavy/failed MCPJam Inspector staging trees are runtime-only.
+mcpjam/
+mcpjam-clean-*/
+mcpjam-lite-*/
+mcpjam-cli/wolfram-probe.json
