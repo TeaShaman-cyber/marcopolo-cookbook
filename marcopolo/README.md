@@ -695,3 +695,65 @@ git push origin main
 or prefix each command individually.
 
 Do not interpret the resulting unauthenticated/wrong-context `403` as evidence that repository permissions changed until the same operation is retried in the intended governed credential context.
+
+---
+
+## 24. Google Drive session recovery has two authority boundaries: remote resolution and local materialization
+
+### Observed symptoms
+
+A real Barn Doctor recovery through the MarcoPolo Google Drive connection exposed several failure modes that can look like missing remote data when they are actually local/runtime issues:
+
+- browsing a folder reported more rows than were rendered in the preview;
+- using a display folder name as a provider parent path failed, while browsing the root exposed the stable folder ID;
+- an exact remote filename resolved successfully, but a custom `--local-path` failed with local `Permission denied`;
+- repeating the same download without a custom destination succeeded under `data/downloads`;
+- the runtime had `unzip` but no `zip` executable;
+- rebuilding Barn Doctor entries with Python `zipfile.write()` failed because source ZIP timestamps were earlier than 1980.
+
+### Safe route
+
+```text
+connection list/test
+        ↓
+root browse
+        ↓
+resolve stable provider folder ID
+        ↓
+folder browse when discovery is needed
+        ↓
+exact-name connection download
+        ↓
+connection-managed data/downloads destination
+        ↓
+sha256 + unzip listing
+        ↓
+Session Search validation/import
+```
+
+Do not infer absence from a browse preview. Compare rendered preview length with `row_count`; when the exact filename is already known, prefer a direct bounded download attempt over recursively traversing Drive.
+
+A download failure after remote resolution must be classified by layer:
+
+```text
+remote file resolved + local Permission denied
+        = local destination failure
+        != Drive file missing
+```
+
+### Archive handling
+
+Do not install tools merely because a common CLI is missing. If a reviewed workflow must build a derived ZIP, the Python standard library is sufficient:
+
+```python
+import zipfile
+
+with zipfile.ZipFile(output, "w", strict_timestamps=False) as zf:
+    ...
+```
+
+Barn Doctor source archives remain immutable evidence. Any derived archive must carry a receipt containing at least source SHA-256, derived SHA-256, the selected session identity, excluded members, and the evidence rule used to justify selection.
+
+### Search rule while diagnosing the route
+
+Never fall back to broad recursive `grep -R /workspace`. Use `/workspace/tools/search/search.sh`, narrow paths and globs, and split large diagnostics into short independent calls. A timeout or control-plane block is an observer failure until the authoritative target is read separately.
