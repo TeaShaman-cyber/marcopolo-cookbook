@@ -155,6 +155,25 @@ READBACK
   native ChatGPT GitHub connector
 ```
 
+The native read path can itself become unavailable mid-session even after successful reauthorization. Classify that separately:
+
+```text
+native connector unavailable
+  != prior write failed
+  != repository permission changed
+```
+
+Readback fallback ladder for public repositories:
+
+```text
+1. native GitHub connector
+2. independent public/unauthenticated GitHub read
+3. governed gh + exact remote ref fetch
+   (degraded independence; record this explicitly)
+```
+
+Do not replay a mutation merely because the preferred readback tool disappeared. Verify the exact remote SHA/object through the strongest remaining read path and record which authority class supplied the evidence.
+
 Never print, inspect, or copy credential material. Use the configured credential directory without exposing secrets.
 
 ---
