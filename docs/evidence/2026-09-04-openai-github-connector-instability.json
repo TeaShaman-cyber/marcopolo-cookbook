@@ -1,0 +1,46 @@
+{
+  "schema": "theseus.github-connector-instability-evidence.v1",
+  "observed_through": "2026-09-04",
+  "surface": "ChatGPT/Codex GitHub connector",
+  "privacy": "sanitized; no tokens, installation IDs, private repository names, private conversation text, or raw connector payloads",
+  "observations": [
+    {
+      "period": "2026-08-28",
+      "phase": "historical_baseline",
+      "fact": "Native OpenAI GitHub connector could read repository state but write attempts returned 403 Resource not accessible by integration.",
+      "control": "A separately authenticated governed GitHub CLI route could write and read back the same user-owned repositories.",
+      "classification": "READ_CAPABLE_WRITE_BLOCKED"
+    },
+    {
+      "period": "2026-09-03",
+      "phase": "after_full_reauthorization",
+      "fact": "After revoke/reinstall/reconnect with all-repository read/write access, the native connector resolved the authenticated account and returned admin collaborator permission on a user-owned repository.",
+      "classification": "AUTHORITY_VISIBLE"
+    },
+    {
+      "period": "2026-09-03",
+      "phase": "same_session_first_mutation",
+      "fact": "The first harmless native write path did not reach a stable postcondition because the connector became unavailable/disabled rather than returning the earlier stable 403 class.",
+      "control": "Governed GitHub CLI access remained usable against the same account/repository state.",
+      "classification": "CONNECTOR_DISAPPEARED_AFTER_AUTHORITY_VISIBLE"
+    },
+    {
+      "period": "2026-09-03",
+      "phase": "same_session_source_and_branch_reads_writes",
+      "fact": "Native source search and a later branch-creation attempt each caused the connector to become unavailable in separate bounded probes.",
+      "classification": "OPERATION_TRIGGERED_TOOL_LOSS"
+    },
+    {
+      "period": "2026-09-04",
+      "phase": "readback_after_successful_external_write",
+      "fact": "The native connector was rediscovered with issue/PR read schemas, then became disabled on an independent readback attempt. Exact remote SHA and PR state remained readable through a separate governed GitHub route.",
+      "classification": "READBACK_PATH_DISAPPEARED"
+    }
+  ],
+  "inference": "Observed behavior is consistent with runtime/session-scoped connector state or authority instability, not a single static repository permission failure.",
+  "unknown": [
+    "Whether tool loss is caused by MCP/tool registry refresh, GitHub App installation state propagation, connector authorization cache invalidation, or another platform layer.",
+    "Whether the triggering operation matters or only exposes an already-stale connector state.",
+    "Whether failure scope is chat/thread/runtime-specific or shared across concurrent sessions."
+  ]
+}
