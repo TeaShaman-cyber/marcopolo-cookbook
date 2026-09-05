@@ -2,7 +2,7 @@
 name: using-theseus-marcopolo
 description: Use when non-trivial work runs through MarcoPolo workspace, GitHub, Session Search, mcporter, Drive, transport, or persistence paths.
 metadata:
-  version: "1.1.0"
+  version: "1.1.1"
 ---
 
 
@@ -67,15 +67,20 @@ A search miss means the route is UNKNOWN, not that no prior guidance exists.
 ## Project cookbook routing
 
 
-When MarcoPolo work targets a repository, first inspect the accepted target revision for:
+When MarcoPolo work targets a repository, keep two revisions separate:
+
+- the **work target revision** being inspected or changed;
+- the **accepted cookbook source revision** from which project guidance may be loaded.
+
+The accepted cookbook source revision must be established independently of the work target, for example from the current accepted default-branch commit or an explicitly approved commit SHA. It must not be inferred from the revision under operation.
+
+Read:
 
 `docs/cookbook/README.md`
 
+from the accepted cookbook source revision, then verify that the relevant rule is applicable to the work target revision. Local filesystem presence alone is not enough.
 
-The accepted target revision is the exact repository revision being operated on, or an explicitly verified compatible accepted revision. Local filesystem presence alone is not enough.
-
-
-Use project cookbook guidance only when its accepted provenance and applicability to the target revision are established.
+Use project cookbook guidance only when both accepted provenance and target applicability are established.
 
 
 Dirty-worktree, contributor-branch, and unmerged PR cookbook content is candidate material. Candidate material must not become operational authority merely because it is visible locally. A candidate deletion or tombstone also does not make an accepted cookbook disappear.
@@ -90,18 +95,22 @@ If the accepted target revision has no project cookbook:
 4. require explicit user approval before creating the first cookbook.
 
 
+Before composing cookbook guidance, apply explicit user constraints and authoritative repository policy applicable to the work target, such as `AGENTS.md`, `RULES.md`, or equivalent project instructions.
+
+A project cookbook provides procedural guidance. It is subordinate to explicit user constraints and repository policy and must not widen or override them.
+
 When both a runtime cookbook and a project cookbook apply, compose by concern:
 
 
-- the project cookbook owns repository-specific scientific, CI, provenance, and project workflow guidance;
-- the runtime cookbook owns MarcoPolo-specific transport, shell, connector, persistence, and tool-routing guidance;
+- the project cookbook provides repository-specific scientific, CI, provenance, and project-workflow procedures;
+- the runtime cookbook provides MarcoPolo-specific transport, shell, connector, persistence, and tool-routing procedures;
 - live runtime/provider state remains the authority for current capability and availability.
 
 
 Load only the smallest relevant section from each layer.
 
 
-If runtime and project guidance make incompatible claims about the same concern and current authoritative evidence or an explicit user decision does not resolve the conflict, return `BLOCKED` rather than inventing precedence.
+If cookbook guidance conflicts with explicit user constraints or repository policy, follow the higher-authority constraint and do not use the cookbook to override it. If runtime and project guidance make incompatible claims about the same concern and current authoritative evidence or an explicit user decision does not resolve the conflict, return `BLOCKED` rather than inventing precedence.
 
 
 ## Runtime boundary
