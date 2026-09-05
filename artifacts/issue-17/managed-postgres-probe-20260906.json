@@ -1,37 +1,64 @@
 {
-  "schema_version": "managed-postgres-memory-probe-v0.1",
+  "schema_version": "managed-postgres-memory-probe-v0.2",
   "date": "2026-09-06",
   "backend_class": "managed_postgresql",
   "provider": "neon",
   "provider_plan": "free",
-  "provider_control": {
-    "postgres_version": 17,
-    "region": "aws-us-east-2",
-    "database": "neondb",
-    "synthetic_role": "memory_probe_owner",
-    "direct_readonly_sentinel": "PASS"
-  },
   "transport": "marcopolo_pg_connection",
   "synthetic_only": true,
   "secret_material_recorded": false,
+  "provider_control": {
+    "postgres_major": 17,
+    "region": "aws-us-east-2",
+    "database": "neondb",
+    "synthetic_role": "memory_probe_owner",
+    "direct_readonly_sentinel": "PASS",
+    "distinct_client_readback": "PASS"
+  },
+  "synthetic_event": {
+    "operation_id": "op-neon-marcopolo-20260906-001",
+    "event_id": "evt-neon-marcopolo-20260906-001",
+    "scope": "synthetic/issue-17",
+    "canary": "SONAR-MEMORY-PROBE-0906-NEON-4821",
+    "created_at": "2026-09-05T23:10:20.581Z"
+  },
   "results": {
     "provider_project_ready": "PASS",
     "provider_readonly_sentinel": "PASS",
-    "marcopolo_pg_connection": "BLOCKED_USER_SETUP",
-    "connection_sentinel": "INCONCLUSIVE",
-    "remote_write": "INCONCLUSIVE",
-    "exact_readback": "INCONCLUSIVE",
-    "idempotent_retry": "INCONCLUSIVE",
-    "fresh_invocation_persistence": "INCONCLUSIVE",
-    "cross_client_persistence": "UNKNOWN"
+    "marcopolo_pg_connection": "PASS",
+    "marcopolo_connection_sentinel": "PASS",
+    "remote_write": "PASS",
+    "exact_readback": "PASS",
+    "idempotent_retry": "PASS",
+    "fresh_query_invocation_readback": "PASS",
+    "distinct_client_readback": "PASS",
+    "logical_row_count_after_retry": 1,
+    "lost_acknowledgement_injection": "NOT_TESTED",
+    "fresh_chat_recall": "NOT_TESTED",
+    "cross_executor_persistence": "UNKNOWN",
+    "concurrent_same_key_race": "PASS"
   },
-  "blocker": {
-    "class": "PRIVILEGED_CONNECTION_SETUP_REQUIRES_BROWSER",
-    "meaning": "MarcoPolo pg credentials must be entered through its browser setup flow rather than exposed to the model or workspace."
+  "marcopolo_run_ids": {
+    "identity_query": "run_20260905_230958_802b6848",
+    "create_table": "run_20260905_231018_ae75530a",
+    "retain_first": "run_20260905_231020_69f9833a",
+    "retain_retry": "run_20260905_231033_976c4b14",
+    "exact_readback": "run_20260905_231034_59a83ab6",
+    "uniqueness_count": "run_20260905_231036_c44e3d92",
+    "race_writer_a": "run_20260905_231151_ff12977e",
+    "race_writer_b": "run_20260905_231151_f13dd06a",
+    "race_final_count": "run_20260905_231154_a7ae19e3"
   },
-  "notes": [
-    "No connection string, password, token, or provider project identifier is stored in this receipt.",
-    "The direct Neon sentinel is a provider control only; it does not prove the MarcoPolo pg transport.",
-    "The probe resumes with SELECT 1 through MarcoPolo after the privileged pg connection is saved."
+  "claims": [
+    "An acknowledged synthetic write through MarcoPolo pg was independently visible through the Neon provider control surface.",
+    "Retrying the same caller-stable operation_id returned the same logical event and left exactly one logical row.",
+    "Two concurrent MarcoPolo retains using one shared operation_id produced exactly one logical row.",
+    "Remote managed PostgreSQL removes MarcoPolo local NFS/file locking from the authoritative database durability path, but not from local caches or projections."
+  ],
+  "non_claims": [
+    "No real lost-acknowledgement fault was injected.",
+    "No fresh ChatGPT-session recall attribution was tested.",
+    "No executor-replacement persistence claim is made.",
+    "No embedded-file backend is declared safe by this result."
   ]
 }
