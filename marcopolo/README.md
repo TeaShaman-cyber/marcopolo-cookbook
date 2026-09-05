@@ -14,6 +14,7 @@ The goal is to identify **which layer actually failed**, use the smallest safe w
 6. **Do not trust a successful mutation until exact remote readback.** A stale API response or incomplete Git tree can otherwise make a successful-looking write wrong.
 7. **Do not assume `mcporter`, Node modules, Python packages, or prior virtualenvs persist.** Pin dependencies and record runtime versions in receipts.
 8. **Search miss != absence; registry metadata != live capability; workflow success != verified evidence.** Preserve raw observations and derived conclusions separately.
+9. **Connector downloads should land in `/workspace/data/downloads/`.** The `/workspace` root may reject connector writes even when the download path itself is healthy.
 
 ---
 
@@ -37,6 +38,26 @@ GitHub Actions runner
 A GitHub artifact downloaded through the native GitHub connector can appear under `/mnt/data` and still be invisible to MarcoPolo, because MarcoPolo executes in `/workspace` on another runtime.
 
 **Rule:** identify which runtime produced a path before using it. If bytes must cross a boundary, explicitly materialize/copy/download them in the destination runtime. One environment not seeing another environment's file is not evidence of data loss.
+
+### Connector download landing zone
+
+A connector download can fail with a destination permission error even when the remote file, connection, and download operation are all healthy.
+
+Observed:
+
+```text
+connection download ... --local-path /workspace/file
+-> Permission denied
+```
+
+Verified:
+
+```text
+connection download ... --local-path /workspace/data/downloads/file
+-> PASS
+```
+
+**Rule:** do not assume the `/workspace` root is writable for connector download actions. Use `/workspace/data/downloads/` as the default landing zone, then move or copy the file with `workspace_shell` only when another location is actually required. Treat `Permission denied` on the destination as a path-permission failure, not evidence that the remote connector download itself is broken.
 
 ---
 
@@ -82,6 +103,67 @@ gh pr edit 123 --body-file /tmp/body.md
 ```
 
 For large generated text, prefer a programmatic file write or a single interpolation-free payload rather than stacking `bash -lc` + heredoc + Markdown fences.
+
+### Base64 transport for scripts and generated files
+
+Treat command-shaped control flow and exact payload delivery as different transport classes.
+
+**Default routing rule:**
+
+```text
+short argument-safe control-plane command
+-> plain shell
+
+multiline / structured / quoting-sensitive / exact-byte payload
+-> base64 on the first attempt
+-> decode to an explicit path
+-> verify bytes or syntax
+-> only then execute, mutate, or publish
+```
+
+Keep simple commands plain: `git status`, `git rev-parse`, `gh pr view`, `sha256sum`, test runners, and similarly short argument-safe invocations do not benefit from base64.
+
+When the payload itself contains Markdown, JSON, regular expressions, nested code, heredoc-like text, competing quote layers, or exact generated file bytes, prefer base64 **before the first `workspace_shell` attempt** rather than waiting for a composition-sensitive `403` or quoting failure. This is a transport choice, not an error-recovery trick.
+
+Python example:
+
+```bash
+set -euo pipefail
+TARGET=/tmp/task.py
+EXPECTED_SHA256='<sender-side-sha256>'
+trap 'rm -f "$TARGET"' EXIT
+printf '%s' '<base64-payload>' | base64 -d > "$TARGET"
+printf '%s  %s\n' "$EXPECTED_SHA256" "$TARGET" | sha256sum -c -
+python3 -m py_compile "$TARGET"
+python3 "$TARGET"
+```
+
+Shell example:
+
+```bash
+set -euo pipefail
+TARGET=/tmp/task.sh
+EXPECTED_SHA256='<sender-side-sha256>'
+trap 'rm -f "$TARGET"' EXIT
+printf '%s' '<base64-payload>' | base64 -d > "$TARGET"
+printf '%s  %s\n' "$EXPECTED_SHA256" "$TARGET" | sha256sum -c -
+bash -n "$TARGET"
+bash "$TARGET"
+```
+
+For multi-file edits, transport one small deterministic Python script and let it write exact files with `pathlib.Path.write_text()` or apply bounded transformations.
+
+Rules:
+
+- Base64 is transport encoding, **not encryption or authorization**. Never put secrets in a payload merely because it is encoded.
+- Base64 expands data by roughly one third. Use it for text-sized payloads; use artifact/file transfer paths for large files or binaries.
+- Decode into an explicit temporary or target path; do not execute directly from the decoding pipeline.
+- Verify syntax/static validity before execution (`python3 -m py_compile`, `bash -n`, JSON parse, etc.).
+- For exact file delivery, compare the decoded bytes against a sender-side expected digest (for example with `sha256sum -c`) before use; printing a digest is not verification.
+- Keep transported scripts bounded and deterministic; print changed paths or hashes when useful.
+- After mutation, independently verify the authoritative target state and remove temporary transport files when no longer needed.
+
+A pre-execution HTML `403` from `workspace_shell` establishes a connector/control-plane failure, not target execution. If a plain command-shaped call fails that way, diagnose the boundary. If a complex payload was sent plain despite matching the rule above, retrying the same composed payload is the wrong fallback; switch to deterministic payload transport.
 
 **Verification:** read the resulting file/issue/PR/comment back after write. For files, also hash them.
 
@@ -539,6 +621,7 @@ Never collapse metadata into capability authority.
 |---|---|---|---|
 | `sh: ... pipefail` | shell dialect | target logic broken | rerun explicitly under Bash |
 | Markdown executed as shell | quoting/heredoc layer | intended document concept wrong | discard partial output; rewrite interpolation-free |
+| inline JSON mangled before CLI parse | outer quoting/interpolation layer | target CLI or API broken | use file-backed args or base64 transport |
 | `workspace_shell` timeout | execution window / long command | underlying remote job failed | split calls; re-read target |
 | MarcoPolo `502` | connector/control plane | GitHub Action failed | query GitHub independently |
 | GitHub write `403` | connector/app authority | repository read-only everywhere | use governed `gh-write`; native readback |
@@ -715,9 +798,73 @@ or prefix each command individually.
 
 Do not interpret the resulting unauthenticated/wrong-context `403` as evidence that repository permissions changed until the same operation is retried in the intended governed credential context.
 
+## 24. Use local temporary storage as a build/runtime proxy for heavy tool trees
+
+### Observed failure mode
+
+Large npm/runtime trees written directly under `/workspace` NFS produced multiple failure classes during the MCPJam and mcporter work: `ENOTEMPTY` during destructive cleanup, incomplete copied trees, and expensive recursive operations. The same package installation completed normally on local `/tmp`.
+
+### Accepted pattern
+
+```text
+local /tmp build/install
+        -> verify exact versions/content
+        -> persist one archive + checksum on /workspace NFS
+        -> expand archive into local /tmp cache at runtime
+        -> execute through a wrapper
+```
+
+Treat the NFS artifact as durable storage and `/tmp` as the execution/build filesystem. On executor restart the cache may disappear; the wrapper must reconstruct it from the persistent archive and verify it before use.
+
+Do not replace platform-owned runtimes merely to satisfy one tool. For mcporter, system Node 22 remains untouched while the wrapper uses a private Node 24 runtime recovered from the archive.
+
+This pattern is especially useful for npm/node_modules, large language runtimes, generated SDK trees, and other workloads with many small-file create/delete/rename operations.
+
 ---
 
-## 24. Google Drive session recovery has two authority boundaries: remote resolution and local materialization
+## 25. System Python package drift: bootstrap the shared runtime explicitly
+
+### Observed symptom
+
+A repository test run used `/usr/local/bin/python3` and failed with:
+
+```text
+ModuleNotFoundError: No module named 'jsonschema'
+```
+
+A project-local virtualenv elsewhere already contained the package, but searching for and activating unrelated virtualenvs is not a stable route.
+
+### Root cause class
+
+MarcoPolo's system Python and per-repository virtualenvs are separate dependency domains. A package proven in one virtualenv does not imply that `/usr/local/bin/python3` can import it.
+
+### Cookbook-managed route
+
+Run once:
+
+```bash
+/workspace/marcopolo-cookbook/marcopolo/bootstrap-python.sh
+```
+
+It installs the pinned shared tooling dependencies into the workspace user site, which is visible to system Python, then verifies exact versions and imports.
+
+Read-only verification:
+
+```bash
+/workspace/marcopolo-cookbook/marcopolo/bootstrap-python.sh --check
+```
+
+Pinned versions live in `marcopolo/requirements-python.txt`.
+
+### Rule
+
+For reusable MarcoPolo tooling, do not hunt for an arbitrary project's `.venv` to satisfy a missing shared dependency. Run the cookbook bootstrap once, then verify with `--check`. Keep project-specific dependencies inside that project's own virtualenv.
+
+---
+
+---
+
+## 26. Google Drive session recovery has two authority boundaries: remote resolution and local materialization
 
 ### Observed symptoms
 
