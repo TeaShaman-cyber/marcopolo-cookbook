@@ -9,7 +9,7 @@ The goal is to identify **which layer actually failed**, use the smallest safe w
 1. **Assume `workspace_shell` may execute through `/bin/sh`, not Bash.** If Bash syntax matters, invoke `bash -lc` explicitly.
 2. **A MarcoPolo timeout or `502` is an observation/control-plane failure, not proof that the target job failed.** Re-read the target system separately.
 3. **Conversation runtime, MarcoPolo workspace, and GitHub Actions runner are different environments.** Never infer path or package availability across them.
-4. **GitHub read and write paths can have different authority.** Native GitHub readback may work while writes fail; governed `gh-write` in MarcoPolo is the established write fallback.
+4. **GitHub read and write paths can have different authority.** Native GitHub readback may work while writes fail; explicit governed `gh-write` is the primary MarcoPolo write identity. Do not spend the first write attempt on the default/read profile.
 5. **Never infer experiment identity from `GITHUB_SHA` after a launcher checks out another commit.** Pass experiment and launcher identities explicitly.
 6. **Do not trust a successful mutation until exact remote readback.** A stale API response or incomplete Git tree can otherwise make a successful-looking write wrong.
 7. **Do not assume `mcporter`, Node modules, Python packages, or prior virtualenvs persist.** Pin dependencies and record runtime versions in receipts.
@@ -229,13 +229,23 @@ The governed MarcoPolo credential could still perform specific writes.
 READ
   native ChatGPT GitHub connector
 
-WRITE
-  MarcoPolo governed gh-write
+GitHub remote WRITE
+  explicit gh-write first
   GH_CONFIG_DIR=/workspace/.config/gh-write
+
+BRANCH PUBLICATION
+  governed smart-HTTP first when Git transport is appropriate
+  -> GitHub API / Git Database / contents-ref only after governed transport is observed unavailable
 
 READBACK
   native ChatGPT GitHub connector
 ```
+
+Do not spend the first write attempt on the default/read profile. A plain `git push` or `git fetch` can resolve the wrong GitHub CLI credential context when `GH_CONFIG_DIR` is not inherited.
+
+Governed smart-HTTP is the primary branch-publication route when Git transport is appropriate. Bind `GH_CONFIG_DIR=/workspace/.config/gh-write` explicitly to the Git command group and verify the remote ref after publication.
+
+Use GitHub API / Git Database / contents-ref publication only after the governed smart-HTTP route is observed unavailable, or when the requested mutation is not a Git-transport operation and a matching typed GitHub primitive is the natural route. Preserve complete parent/tree semantics where applicable and verify the exact remote postcondition.
 
 The native read path can itself become unavailable mid-session even after successful reauthorization. Classify that separately:
 
@@ -286,16 +296,30 @@ If the `(target_type, operation)` tuple does not match the tool primitive, stop 
 
 ---
 
-## 6. Ordinary `git push` can fail while GitHub API writes still work
+## 6. Governed smart-HTTP first; API publication is fallback
 
-Smart-HTTP `git push` from MarcoPolo began returning HTTP `403`, even though issue comments and GitHub API mutations through governed `gh-write` still worked.
+Repeated session evidence shows that a plain/default-profile Git operation can return HTTP `403` while the same repository operation succeeds once `GH_CONFIG_DIR=/workspace/.config/gh-write` is bound explicitly. Do not classify this as a repository permission failure until the governed write identity has been tested.
 
-### Fallback used successfully
+For branch publication:
+
+```text
+local verified commit
+  ↓
+GH_CONFIG_DIR=/workspace/.config/gh-write
+  ↓
+governed smart-HTTP push
+  ↓
+exact remote-ref readback
+```
+
+API publication is a fallback after governed Git transport fails. Use GitHub API / Git Database / contents-ref publication only after the governed smart-HTTP route is observed unavailable for that operation, or when Git transport does not express the requested typed mutation.
+
+Observed API fallback shape:
 
 ```text
 blob(s)
   ↓
-tree
+complete parent-aware tree
   ↓
 commit
   ↓
@@ -304,10 +328,12 @@ ref update
 independent fetch/readback
 ```
 
+Do not construct a sparse replacement tree where the API requires preservation of the complete parent tree.
+
 ### Required postcondition
 
 ```bash
-git fetch origin <branch>
+GH_CONFIG_DIR=/workspace/.config/gh-write git fetch origin <branch>
 REMOTE=$(git rev-parse origin/<branch>)
 test "$REMOTE" = "$EXPECTED_SHA"
 ```

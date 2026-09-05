@@ -8,10 +8,16 @@ Superseded: 2026-08-28
 ## Current route
 
 ```text
-workspace_shell -> gh / git -> GitHub
+read  -> default/read profile
+write -> explicit gh-write first
+verify -> exact remote readback
 ```
 
-The current route uses ordinary `gh` / `git`, but authorization is scope-separated. The default MarcoPolo OAuth profile is read-capable; explicitly authorized writes use the separate `/workspace/.config/gh-write` CLI OAuth profile via `GH_CONFIG_DIR`. After authorization or runtime changes, check the intended profile with `gh auth status`, run the smallest repository probe, and verify remote state after writes.
+The default MarcoPolo OAuth profile is read-capable. For an authorized GitHub write, select `/workspace/.config/gh-write` before the first write attempt; never probe a GitHub write with the default/read profile first.
+
+For branch publication, governed smart-HTTP under `GH_CONFIG_DIR=/workspace/.config/gh-write` is primary when Git transport is appropriate. API publication is a fallback after governed Git transport fails, subject to exact parent/tree semantics and remote readback. Typed issue/PR/comment/review mutations should use the matching governed mutation primitive rather than being forced through Git transport.
+
+After authorization or runtime changes, check the intended profile with `gh auth status`, run the smallest relevant capability probe, and verify remote state after writes.
 
 ## When the old wrapper may be considered
 
