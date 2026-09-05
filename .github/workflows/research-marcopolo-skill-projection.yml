@@ -1,0 +1,42 @@
+name: Research MarcoPolo skill projection
+
+on:
+  push:
+    branches:
+      - research/skill-projection-spike-12
+
+permissions:
+  contents: read
+
+jobs:
+  projection:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Theseus cookbook
+        uses: actions/checkout@v4
+
+      - name: Checkout pinned MarcoPolo integration starter
+        uses: actions/checkout@v4
+        with:
+          repository: immersa-co/marcopolo-integration-starter
+          ref: 9c9ac20d605d131c010f174a64653e276bef81e8
+          path: upstream
+
+      - name: Verify pinned upstream identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C upstream rev-parse HEAD)" = "9c9ac20d605d131c010f174a64653e276bef81e8"
+
+      - name: Run public loader projection probe
+        run: python3 research/spikes/marcopolo-skill-projection/probe.py
+
+      - name: Show compact receipt
+        run: cat research-output/receipt.json
+
+      - name: Upload projection evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: marcopolo-skill-projection
+          path: research-output/
+          if-no-files-found: error
