@@ -2,7 +2,7 @@
 name: using-theseus-marcopolo
 description: Use when non-trivial work runs through MarcoPolo workspace, GitHub, Session Search, mcporter, Drive, transport, or persistence paths.
 metadata:
-  version: "1.1.1"
+  version: "1.1.2"
 ---
 
 
@@ -86,7 +86,7 @@ Use project cookbook guidance only when both accepted provenance and target appl
 Dirty-worktree, contributor-branch, and unmerged PR cookbook content is candidate material. Candidate material must not become operational authority merely because it is visible locally. A candidate deletion or tombstone also does not make an accepted cookbook disappear.
 
 
-If the accepted target revision has no project cookbook:
+If the accepted cookbook source revision has no project cookbook:
 
 
 1. report the project cookbook as absent;

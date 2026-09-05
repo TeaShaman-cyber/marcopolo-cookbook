@@ -10,7 +10,7 @@ class CandidateSkillContractTests(unittest.TestCase):
         cls.text = cls.skill.read_text(encoding="utf-8")
 
     def test_patch_version_closes_router_authority_holes(self):
-        self.assertIn('version: "1.1.1"', self.text)
+        self.assertIn('version: "1.1.2"', self.text)
         self.assertIn("docs/cookbook/README.md", self.text)
 
     def test_project_cookbook_provenance_is_independent_of_work_target(self):
@@ -27,9 +27,12 @@ class CandidateSkillContractTests(unittest.TestCase):
         self.assertIn("procedural guidance", lower)
         self.assertIn("subordinate", lower)
 
-    def test_missing_project_cookbook_is_not_auto_created(self):
-        self.assertIn("do not create a project cookbook automatically", self.text.lower())
-        self.assertIn("explicit user approval", self.text.lower())
+    def test_missing_project_cookbook_is_checked_on_accepted_source_revision(self):
+        lower = self.text.lower()
+        self.assertIn("if the accepted cookbook source revision has no project cookbook", lower)
+        self.assertNotIn("if the accepted target revision has no project cookbook", lower)
+        self.assertIn("do not create a project cookbook automatically", lower)
+        self.assertIn("explicit user approval", lower)
 
     def test_runtime_and_project_guidance_compose_by_concern(self):
         self.assertIn("compose by concern", self.text.lower())
