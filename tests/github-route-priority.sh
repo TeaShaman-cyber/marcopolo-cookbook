@@ -20,4 +20,13 @@ grep -Fq 'write -> explicit gh-write first' "$WRAPPER" || fail "wrapper route do
 grep -Fq 'never probe a GitHub write with the default/read profile first' "$WRAPPER" || fail "wrapper does not forbid default write probe"
 grep -Fq 'API publication is a fallback after governed Git transport fails' "$WRAPPER" || fail "wrapper does not bound API fallback"
 
+grep -Fq 'Classify the governed push failure before choosing any alternate mutation route.' "$RUNBOOK" || fail "fallback is not gated by failure classification"
+grep -Fq 'Non-fast-forward, branch protection, hook/policy rejection, invalid refspec, or wrong remote' "$RUNBOOK" || fail "semantic and policy push failures are not stop conditions"
+grep -Fq 'Prefer native GitHub or public exact-ref readback' "$RUNBOOK" || fail "independent readback is not primary"
+if grep -Fq 'A safe diagnostic is `git push --dry-run` under both profiles.' "$WRAPPER"; then
+  fail "wrapper still prescribes the default-profile write probe"
+fi
+grep -Fq 'Historical paired diagnostic evidence' "$WRAPPER" || fail "historical default-profile evidence is not clearly separated from current procedure"
+grep -Fq 'The checked-in evidence establishes bounded credential-context observations, not repeated same-operation A/B trials.' "$RUNBOOK" || fail "credential-route evidence claim remains over-broad"
+
 printf 'GITHUB_ROUTE_PRIORITY PASS\n'

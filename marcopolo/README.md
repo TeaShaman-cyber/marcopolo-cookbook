@@ -298,7 +298,7 @@ If the `(target_type, operation)` tuple does not match the tool primitive, stop 
 
 ## 6. Governed smart-HTTP first; API publication is fallback
 
-Repeated session evidence shows that a plain/default-profile Git operation can return HTTP `403` while the same repository operation succeeds once `GH_CONFIG_DIR=/workspace/.config/gh-write` is bound explicitly. Do not classify this as a repository permission failure until the governed write identity has been tested.
+The checked-in evidence establishes bounded credential-context observations, not repeated same-operation A/B trials. In one Wiki diagnostic, a default-profile dry-run returned HTTP `403` while an explicit `gh-write` dry-run produced a push plan. In a later incident, an explicitly bound `gh-write` push succeeded while a separate plain fetch failed under the default credential context. Use this evidence to select the governed identity first; do not generalize it into a claim that every smart-HTTP failure is a credential failure.
 
 For branch publication:
 
@@ -312,7 +312,13 @@ governed smart-HTTP push
 exact remote-ref readback
 ```
 
-API publication is a fallback after governed Git transport fails. Use GitHub API / Git Database / contents-ref publication only after the governed smart-HTTP route is observed unavailable for that operation, or when Git transport does not express the requested typed mutation.
+Classify the governed push failure before choosing any alternate mutation route.
+
+A different publication route is eligible only when evidence localizes the governed smart-HTTP failure to **transport/auth availability** under the explicit `gh-write` identity and that alternate route is already authorized and admissible. A route failure never grants permission to another route.
+
+Non-fast-forward, branch protection, hook/policy rejection, invalid refspec, or wrong remote are operation-state or policy failures, not transport unavailability. **STOP** and resolve that state; do not retry the mutation through Git Database, contents/ref, or another transport.
+
+API publication is therefore a conditional fallback, not a retry reflex. Use GitHub API / Git Database / contents-ref publication only after the governed smart-HTTP route is observed unavailable because of a classified transport/auth availability failure for that operation, or when Git transport does not express the requested typed mutation.
 
 Observed API fallback shape:
 
@@ -332,11 +338,16 @@ Do not construct a sparse replacement tree where the API requires preservation o
 
 ### Required postcondition
 
+Prefer native GitHub or public exact-ref readback; do not make verification depend on the write credential.
+
+For a public repository, an independent Git transport read can be:
+
 ```bash
-GH_CONFIG_DIR=/workspace/.config/gh-write git fetch origin <branch>
-REMOTE=$(git rev-parse origin/<branch>)
+REMOTE=$(git ls-remote https://github.com/OWNER/REPO.git refs/heads/<branch> | awk '{print $1}')
 test "$REMOTE" = "$EXPECTED_SHA"
 ```
+
+For private or otherwise non-public targets, prefer the native GitHub read surface. If only the governed write identity can read the ref, an explicit `GH_CONFIG_DIR=/workspace/.config/gh-write git fetch ...` is a **degraded-independence fallback** and must be labeled as such rather than presented as independent verification.
 
 Then run the relevant full tests on the exact published SHA.
 
@@ -677,7 +688,7 @@ Never collapse metadata into capability authority.
 | `workspace_shell` timeout | execution window / long command | underlying remote job failed | split calls; re-read target |
 | MarcoPolo `502` | connector/control plane | GitHub Action failed | query GitHub independently |
 | GitHub write `403` | connector/app authority | repository read-only everywhere | use governed `gh-write`; native readback |
-| `git push` `403` | smart-HTTP path | Git Database API cannot write | governed API fallback + exact readback |
+| `git push` `403` | smart-HTTP credential/transport **or** repository policy; classification required | alternate API route authorized or appropriate | retry/confirm under explicit `gh-write`; classify; STOP on semantic/policy failure; alternate only for verified transport/auth unavailability |
 | API ref read shows old SHA after write | stale read | write rolled back | fetch/query independently |
 | `origin` missing | no checkout/local remote | remote branch absent | explicit repository URL |
 | valid SHA rejected | shell validation | requested SHA invalid | Bash regex + test |

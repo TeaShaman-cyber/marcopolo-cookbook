@@ -15,7 +15,7 @@ verify -> exact remote readback
 
 The default MarcoPolo OAuth profile is read-capable. For an authorized GitHub write, select `/workspace/.config/gh-write` before the first write attempt; never probe a GitHub write with the default/read profile first.
 
-For branch publication, governed smart-HTTP under `GH_CONFIG_DIR=/workspace/.config/gh-write` is primary when Git transport is appropriate. API publication is a fallback after governed Git transport fails, subject to exact parent/tree semantics and remote readback. Typed issue/PR/comment/review mutations should use the matching governed mutation primitive rather than being forced through Git transport.
+For branch publication, governed smart-HTTP under `GH_CONFIG_DIR=/workspace/.config/gh-write` is primary when Git transport is appropriate. API publication is a fallback after governed Git transport fails **only after the failure is classified as transport/auth unavailability under the explicit write identity**; semantic or policy rejection stops the write instead of changing transport. The alternate route must already be authorized and admissible. Typed issue/PR/comment/review mutations should use the matching governed mutation primitive rather than being forced through Git transport.
 
 After authorization or runtime changes, check the intended profile with `gh auth status`, run the smallest relevant capability probe, and verify remote state after writes.
 
@@ -131,7 +131,15 @@ Use:
 GH_CONFIG_DIR=/workspace/.config/gh-write git push origin master
 ```
 
-A safe diagnostic is `git push --dry-run` under both profiles. In the observed 2026-08-30 case:
+For a current write diagnostic, probe only the explicit write identity:
+
+```bash
+GH_CONFIG_DIR=/workspace/.config/gh-write git push --dry-run origin master
+```
+
+Do not deliberately send a write probe through the default/read profile.
+
+Historical paired diagnostic evidence from the observed 2026-08-30 case remains useful as a receipt, not as the current procedure:
 
 ```text
 default profile dry-run -> HTTP 403
