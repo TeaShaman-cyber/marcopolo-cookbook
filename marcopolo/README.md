@@ -14,6 +14,7 @@ The goal is to identify **which layer actually failed**, use the smallest safe w
 6. **Do not trust a successful mutation until exact remote readback.** A stale API response or incomplete Git tree can otherwise make a successful-looking write wrong.
 7. **Do not assume `mcporter`, Node modules, Python packages, or prior virtualenvs persist.** Pin dependencies and record runtime versions in receipts.
 8. **Search miss != absence; registry metadata != live capability; workflow success != verified evidence.** Preserve raw observations and derived conclusions separately.
+9. **Connector downloads should land in `/workspace/data/downloads/`.** The `/workspace` root may reject connector writes even when the download path itself is healthy.
 
 ---
 
@@ -37,6 +38,26 @@ GitHub Actions runner
 A GitHub artifact downloaded through the native GitHub connector can appear under `/mnt/data` and still be invisible to MarcoPolo, because MarcoPolo executes in `/workspace` on another runtime.
 
 **Rule:** identify which runtime produced a path before using it. If bytes must cross a boundary, explicitly materialize/copy/download them in the destination runtime. One environment not seeing another environment's file is not evidence of data loss.
+
+### Connector download landing zone
+
+A connector download can fail with a destination permission error even when the remote file, connection, and download operation are all healthy.
+
+Observed:
+
+```text
+connection download ... --local-path /workspace/file
+-> Permission denied
+```
+
+Verified:
+
+```text
+connection download ... --local-path /workspace/data/downloads/file
+-> PASS
+```
+
+**Rule:** do not assume the `/workspace` root is writable for connector download actions. Use `/workspace/data/downloads/` as the default landing zone, then move or copy the file with `workspace_shell` only when another location is actually required. Treat `Permission denied` on the destination as a path-permission failure, not evidence that the remote connector download itself is broken.
 
 ---
 
