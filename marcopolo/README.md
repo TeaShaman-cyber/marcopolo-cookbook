@@ -779,3 +779,43 @@ Treat the NFS artifact as durable storage and `/tmp` as the execution/build file
 Do not replace platform-owned runtimes merely to satisfy one tool. For mcporter, system Node 22 remains untouched while the wrapper uses a private Node 24 runtime recovered from the archive.
 
 This pattern is especially useful for npm/node_modules, large language runtimes, generated SDK trees, and other workloads with many small-file create/delete/rename operations.
+
+---
+
+## 25. System Python package drift: bootstrap the shared runtime explicitly
+
+### Observed symptom
+
+A repository test run used `/usr/local/bin/python3` and failed with:
+
+```text
+ModuleNotFoundError: No module named 'jsonschema'
+```
+
+A project-local virtualenv elsewhere already contained the package, but searching for and activating unrelated virtualenvs is not a stable route.
+
+### Root cause class
+
+MarcoPolo's system Python and per-repository virtualenvs are separate dependency domains. A package proven in one virtualenv does not imply that `/usr/local/bin/python3` can import it.
+
+### Cookbook-managed route
+
+Run once:
+
+```bash
+/workspace/marcopolo-cookbook/marcopolo/bootstrap-python.sh
+```
+
+It installs the pinned shared tooling dependencies into the workspace user site, which is visible to system Python, then verifies exact versions and imports.
+
+Read-only verification:
+
+```bash
+/workspace/marcopolo-cookbook/marcopolo/bootstrap-python.sh --check
+```
+
+Pinned versions live in `marcopolo/requirements-python.txt`.
+
+### Rule
+
+For reusable MarcoPolo tooling, do not hunt for an arbitrary project's `.venv` to satisfy a missing shared dependency. Run the cookbook bootstrap once, then verify with `--check`. Keep project-specific dependencies inside that project's own virtualenv.
