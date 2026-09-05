@@ -1,0 +1,37 @@
+{
+  "schema_version": "managed-postgres-memory-probe-v0.1",
+  "date": "2026-09-06",
+  "backend_class": "managed_postgresql",
+  "provider": "neon",
+  "provider_plan": "free",
+  "provider_control": {
+    "postgres_version": 17,
+    "region": "aws-us-east-2",
+    "database": "neondb",
+    "synthetic_role": "memory_probe_owner",
+    "direct_readonly_sentinel": "PASS"
+  },
+  "transport": "marcopolo_pg_connection",
+  "synthetic_only": true,
+  "secret_material_recorded": false,
+  "results": {
+    "provider_project_ready": "PASS",
+    "provider_readonly_sentinel": "PASS",
+    "marcopolo_pg_connection": "BLOCKED_USER_SETUP",
+    "connection_sentinel": "INCONCLUSIVE",
+    "remote_write": "INCONCLUSIVE",
+    "exact_readback": "INCONCLUSIVE",
+    "idempotent_retry": "INCONCLUSIVE",
+    "fresh_invocation_persistence": "INCONCLUSIVE",
+    "cross_client_persistence": "UNKNOWN"
+  },
+  "blocker": {
+    "class": "PRIVILEGED_CONNECTION_SETUP_REQUIRES_BROWSER",
+    "meaning": "MarcoPolo pg credentials must be entered through its browser setup flow rather than exposed to the model or workspace."
+  },
+  "notes": [
+    "No connection string, password, token, or provider project identifier is stored in this receipt.",
+    "The direct Neon sentinel is a provider control only; it does not prove the MarcoPolo pg transport.",
+    "The probe resumes with SELECT 1 through MarcoPolo after the privileged pg connection is saved."
+  ]
+}
