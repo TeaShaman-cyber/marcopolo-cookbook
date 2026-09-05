@@ -237,6 +237,25 @@ READBACK
   native ChatGPT GitHub connector
 ```
 
+The native read path can itself become unavailable mid-session even after successful reauthorization. Classify that separately:
+
+```text
+native connector unavailable
+  != prior write failed
+  != repository permission changed
+```
+
+Readback fallback ladder for public repositories:
+
+```text
+1. native GitHub connector
+2. independent public/unauthenticated GitHub read
+3. governed gh + exact remote ref fetch
+   (degraded independence; record this explicitly)
+```
+
+Do not replay a mutation merely because the preferred readback tool disappeared. Verify the exact remote SHA/object through the strongest remaining read path and record which authority class supplied the evidence.
+
 Never print, inspect, or copy credential material. Use the configured credential directory without exposing secrets.
 
 ---
@@ -840,3 +859,67 @@ Pinned versions live in `marcopolo/requirements-python.txt`.
 ### Rule
 
 For reusable MarcoPolo tooling, do not hunt for an arbitrary project's `.venv` to satisfy a missing shared dependency. Run the cookbook bootstrap once, then verify with `--check`. Keep project-specific dependencies inside that project's own virtualenv.
+
+---
+
+---
+
+## 26. Google Drive session recovery has two authority boundaries: remote resolution and local materialization
+
+### Observed symptoms
+
+A real Barn Doctor recovery through the MarcoPolo Google Drive connection exposed several failure modes that can look like missing remote data when they are actually local/runtime issues:
+
+- browsing a folder reported more rows than were rendered in the preview;
+- using a display folder name as a provider parent path failed, while browsing the root exposed the stable folder ID;
+- an exact remote filename resolved successfully, but a custom `--local-path` failed with local `Permission denied`;
+- repeating the same download without a custom destination succeeded under `data/downloads`;
+- the runtime had `unzip` but no `zip` executable;
+- rebuilding Barn Doctor entries with Python `zipfile.write()` failed because source ZIP timestamps were earlier than 1980.
+
+### Safe route
+
+```text
+connection list/test
+        ↓
+root browse
+        ↓
+resolve stable provider folder ID
+        ↓
+folder browse when discovery is needed
+        ↓
+exact-name connection download
+        ↓
+connection-managed data/downloads destination
+        ↓
+sha256 + unzip listing
+        ↓
+Session Search validation/import
+```
+
+Do not infer absence from a browse preview. Compare rendered preview length with `row_count`; when the exact filename is already known, prefer a direct bounded download attempt over recursively traversing Drive.
+
+A download failure after remote resolution must be classified by layer:
+
+```text
+remote file resolved + local Permission denied
+        = local destination failure
+        != Drive file missing
+```
+
+### Archive handling
+
+Do not install tools merely because a common CLI is missing. If a reviewed workflow must build a derived ZIP, the Python standard library is sufficient:
+
+```python
+import zipfile
+
+with zipfile.ZipFile(output, "w", strict_timestamps=False) as zf:
+    ...
+```
+
+Barn Doctor source archives remain immutable evidence. Any derived archive must carry a receipt containing at least source SHA-256, derived SHA-256, the selected session identity, excluded members, and the evidence rule used to justify selection.
+
+### Search rule while diagnosing the route
+
+Never fall back to broad recursive `grep -R /workspace`. Use `/workspace/tools/search/search.sh`, narrow paths and globs, and split large diagnostics into short independent calls. A timeout or control-plane block is an observer failure until the authoritative target is read separately.

@@ -63,3 +63,15 @@ Pattern beginning with `-`:
 The implementation was acceptance-tested against fixed-string metacharacters,
 regex, Cyrillic Unicode text, context lines, globs, hidden-file behavior, JSON
 output, and the explicit `rg unavailable` failure mode.
+
+## Do not use recursive `grep` as the workspace search interface
+
+A broad command such as `grep -R ... /workspace` can traverse large generated trees, Git metadata, caches, or persistent research data and may hit the `workspace_shell` timeout. A timed-out search proves only that the observer did not finish; it does not prove that the requested text is absent.
+
+Use this wrapper instead and narrow paths/globs before increasing timeouts:
+
+```bash
+/workspace/tools/search/search.sh --glob '*.md' 'literal text' /workspace/tools
+```
+
+Use plain `grep` only for bounded pipeline filtering of already-small output.
