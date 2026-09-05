@@ -68,20 +68,41 @@ memory_readback(event_id) -> stored_event
 memory_reconcile(scope) -> conflicts / duplicates / status
 ```
 
-`operation_id` is caller-stable across retries of the same logical retain attempt. A successful retain receipt is allowed only after the canonical accepted bytes have crossed the backend's documented durable commit point:
+`operation_id` is caller-stable across retries of the same logical retain attempt. Before the first write, the admission-approved request is serialized into canonical UTF-8 JSON (sorted object keys, no insignificant whitespace) and hashed as:
+
+```text
+request_fingerprint = sha256(canonical_request_bytes)
+```
+
+The canonical row binds `operation_id` to that fingerprint. A successful retain creates and stores one **immutable receipt** only after the canonical accepted bytes have crossed the backend's documented durable commit point:
+
+```text
+receipt_version
+operation_id
+request_fingerprint
+event_id
+committed_at
+commit_state = DURABLY_COMMITTED
+```
+
+`inserted=true/false`, retry count, transport timing, and similar values are **attempt-local diagnostic** metadata; they are not fields of the immutable logical receipt.
 
 ```text
 DURABLY_COMMITTED
-  = canonical accepted bytes committed before success receipt
+  = canonical accepted bytes + immutable receipt committed before success acknowledgement
 
 lost acknowledgement after commit
-  -> retry the same operation_id
+  -> retry the same operation_id with the same canonical bytes
+  -> recompute the same request_fingerprint
   -> resolve the already committed logical event
-  -> return the same logical result / receipt
+  -> return the same stored receipt
+  -> attempt-local diagnostic may report inserted=false
   -> never create a second observation merely because the acknowledgement was lost
 ```
 
-Backends must expose a lookup path by `operation_id` or an equivalent deterministic idempotency key. Projection/index update may lag the canonical commit, but readback of the committed logical event must not silently manufacture a second event.
+If the same `operation_id` arrives with a different `request_fingerprint`, the backend must fail closed with `IDEMPOTENCY_KEY_REUSE_MISMATCH`. In other words, **same operation_id with different canonical bytes** is an error, not a retry and not a successful replay. No new event is written and the old event must not be presented as acceptance of the new payload.
+
+Backends must expose lookup by `operation_id` and compare the stored request fingerprint before replaying a receipt. Projection/index update may lag the canonical commit, but readback of the committed logical event must not silently manufacture a second event.
 
 Recall is **conflict-complete recall**, not merely top-N matching. One logical recall operation must derive its matches and applicability state from the same snapshot or an equivalent atomic view:
 
@@ -97,18 +118,64 @@ A matching observation must not be returned as uncontested if an applicable cont
 
 ### Core conformance lane
 
-Every backend must implement one deterministic portable lane before richer retrieval is compared:
+Every backend must implement one versioned deterministic portable lane before richer retrieval is compared. **stable IDs** are normative across all backends and survive projection rebuilds:
 
 ```text
-stable IDs
-scope
-source / lifecycle status
-provenance
-exact deterministic filters
-deterministic ordering
-pagination / cutoff semantics
-conflict / supersession / tombstone semantics
+core_schema_version = memory-core-v0.1
 ```
+
+Normative lifecycle vocabulary:
+
+```text
+OBSERVED | CANDIDATE | PENDING | SUPERSEDED | TOMBSTONED
+```
+
+Normative exact/filter recall request for `memory-core-v0.1`:
+
+```text
+scope                  required exact string
+filters.event_id       optional exact string
+filters.operation_id   optional exact string
+filters.source_class   optional exact string
+filters.lifecycle      optional set from the normative vocabulary
+filters.created_after  optional inclusive RFC3339 timestamp
+filters.created_before optional exclusive RFC3339 timestamp
+limit                  integer 1..100, default 20
+cursor                 optional opaque continuation token
+```
+
+Core matching is exact/filter-only. Apply scope and filters first, then use the normative deterministic ordering:
+
+```text
+created_at DESC, event_id ASC
+```
+
+Pagination is keyset pagination. The portable cursor representation is:
+
+```text
+cursor = base64url(created_at, event_id)
+```
+
+For `memory-core-v0.1`, that notation means base64url without `=` padding over UTF-8 bytes of `created_at + "\n" + event_id`, with `created_at` serialized as canonical UTC RFC3339 `YYYY-MM-DDTHH:MM:SSZ` in the conformance fixture.
+
+The cursor resumes strictly after the last emitted `(created_at, event_id)` under the normative ordering. `limit` changes page size only; it must not change match semantics. Ranked FTS, vector similarity, Holographic reasoning, or provider-specific scores cannot influence this core ordering.
+
+The normalized `evidence_packet` contains:
+
+```text
+core_schema_version
+scope
+items[]
+conflicts[]
+supersession[]
+tombstones[]
+next_cursor | null
+result_state = HIT | MISS_UNKNOWN | CONFLICT
+```
+
+Each item must expose stable `event_id`, `operation_id` when present, `source_class`, `lifecycle_state`, `created_at`, provenance, and canonical payload reference/content according to the fixture. Conflict, supersession, and tombstone state must come from the same decision snapshot as the items.
+
+A backend passes **fixture-exact conformance** only when the shared fixture corpus and request vectors in `tests/fixtures/memory-core-v0.1.json` produce the same normalized packet, ordering, lifecycle interpretation, and pagination boundaries. The executable fixture test is `tests/test_memory_core_fixture.py`. Backend-specific diagnostics may be emitted separately but are excluded from the normalized packet.
 
 Ranked FTS, Holographic `probe` / `related` / `reason`, semantic similarity, and other richer retrieval are optional capabilities above the Core conformance lane. Backend replacement is not considered meaningful if the deterministic lane changes its semantics.
 
@@ -184,7 +251,7 @@ Skill / model
 
 This lane deliberately moves mutable concurrency and durability away from the MarcoPolo local filesystem. Candidate primitives map cleanly to the contract:
 
-- `operation_id UNIQUE` plus `INSERT ... ON CONFLICT` gives a deterministic idempotency primitive;
+- `operation_id UNIQUE` plus stored `request_fingerprint` comparison gives a deterministic idempotency primitive; `ON CONFLICT` alone is insufficient;
 - transaction commit is the candidate `DURABLY_COMMITTED` point;
 - conflict-complete recall can read matches, conflicts, supersession, and tombstones from one transaction snapshot;
 - database credentials remain outside `/workspace` behind the MarcoPolo connection boundary.
@@ -334,7 +401,8 @@ MarcoPolo pg sentinel
 -> synthetic table create
 -> insert with caller-stable operation_id
 -> exact readback
--> retry same operation_id
+-> retry same operation_id with identical canonical bytes -> same stored receipt
+-> reuse same operation_id with different canonical bytes -> IDEMPOTENCY_KEY_REUSE_MISMATCH
 -> exactly one logical row
 -> fresh independent MarcoPolo invocation readback
 ```
@@ -392,10 +460,16 @@ Interrupt after meaningful work but before model-mediated retain. Missing persis
 Separately inject or simulate the boundary:
 
 ```text
-canonical append / commit succeeds
+canonical append / commit succeeds with stored immutable receipt
 -> success acknowledgement is lost
--> caller retries the same operation_id
+-> caller retries the same operation_id and identical canonical bytes
+-> same stored receipt is replayed
 -> exactly one logical event remains
+
+same operation_id + different canonical bytes
+-> request_fingerprint mismatch
+-> IDEMPOTENCY_KEY_REUSE_MISMATCH
+-> no new event is written
 ```
 
 Where the runtime exposes genuinely distinct storage clients, workers, mounts, or executor replacement, repeat readback and contention across that boundary. If the current MarcoPolo surface cannot positively establish such a boundary, preserve the result explicitly as:

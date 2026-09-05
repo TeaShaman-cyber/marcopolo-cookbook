@@ -1,0 +1,107 @@
+{
+  "core_schema_version": "memory-core-v0.1",
+  "lifecycle_vocabulary": [
+    "OBSERVED",
+    "CANDIDATE",
+    "PENDING",
+    "SUPERSEDED",
+    "TOMBSTONED"
+  ],
+  "ordering": [
+    "created_at DESC",
+    "event_id ASC"
+  ],
+  "cursor_encoding": "base64url-without-padding(utf8(created_at + newline + event_id))",
+  "events": [
+    {
+      "event_id": "evt-001",
+      "operation_id": "op-001",
+      "scope": "alpha",
+      "source_class": "synthetic",
+      "lifecycle_state": "OBSERVED",
+      "created_at": "2026-09-06T02:00:00Z",
+      "payload": {"value": "A"}
+    },
+    {
+      "event_id": "evt-002",
+      "operation_id": "op-002",
+      "scope": "alpha",
+      "source_class": "synthetic",
+      "lifecycle_state": "OBSERVED",
+      "created_at": "2026-09-06T02:00:00Z",
+      "payload": {"value": "B"}
+    },
+    {
+      "event_id": "evt-003",
+      "operation_id": "op-003",
+      "scope": "alpha",
+      "source_class": "synthetic",
+      "lifecycle_state": "CANDIDATE",
+      "created_at": "2026-09-06T01:00:00Z",
+      "payload": {"value": "C"}
+    },
+    {
+      "event_id": "evt-004",
+      "operation_id": "op-004",
+      "scope": "beta",
+      "source_class": "synthetic",
+      "lifecycle_state": "PENDING",
+      "created_at": "2026-09-06T03:00:00Z",
+      "payload": {"value": "D"}
+    }
+  ],
+  "cases": {
+    "scope_alpha_page_1": {
+      "request": {
+        "scope": "alpha",
+        "filters": {},
+        "limit": 2,
+        "cursor": null
+      },
+      "expected": {
+        "event_ids": ["evt-001", "evt-002"],
+        "next_cursor": "MjAyNi0wOS0wNlQwMjowMDowMFoKZXZ0LTAwMg",
+        "result_state": "HIT"
+      }
+    },
+    "scope_alpha_page_2": {
+      "request": {
+        "scope": "alpha",
+        "filters": {},
+        "limit": 2,
+        "cursor": "MjAyNi0wOS0wNlQwMjowMDowMFoKZXZ0LTAwMg"
+      },
+      "expected": {
+        "event_ids": ["evt-003"],
+        "next_cursor": null,
+        "result_state": "HIT"
+      }
+    },
+    "scope_alpha_observed_only": {
+      "request": {
+        "scope": "alpha",
+        "filters": {"lifecycle": ["OBSERVED"]},
+        "limit": 20,
+        "cursor": null
+      },
+      "expected": {
+        "event_ids": ["evt-001", "evt-002"],
+        "next_cursor": null,
+        "result_state": "HIT"
+      }
+    },
+    "scope_beta": {
+      "request": {
+        "scope": "beta",
+        "filters": {},
+        "limit": 20,
+        "cursor": null
+      },
+      "expected": {
+        "event_ids": ["evt-004"],
+        "next_cursor": null,
+        "result_state": "HIT"
+      }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "schema_version": "managed-postgres-idempotency-probe-v0.2",
+  "date": "2026-09-06",
+  "backend_class": "managed_postgresql",
+  "provider": "neon",
+  "synthetic_only": true,
+  "secret_material_recorded": false,
+  "operation_id": "op-neon-marcopolo-v2-20260906-001",
+  "stored_request_fingerprint": "b89b41aa1c7160a1721ce7595f8d015c2abdb40fb9e7affbb4136ae17980942a",
+  "mismatch_request_fingerprint": "8fc526076a0cadc02c975283a8f3c317a49446f9a39cbe8c62e9c004518abd9b",
+  "results": {
+    "immutable_receipt_stored": "PASS",
+    "identical_retry_same_receipt": "PASS",
+    "identical_retry_same_committed_at": "PASS",
+    "attempt_diagnostic_separate": "PASS",
+    "same_key_different_bytes_reject": "PASS",
+    "mismatch_status": "IDEMPOTENCY_KEY_REUSE_MISMATCH",
+    "mismatch_replayed_receipt": null,
+    "logical_row_count_after_mismatch": 1,
+    "distinct_client_readback": "PASS",
+    "real_lost_ack_injection": "NOT_TESTED"
+  },
+  "marcopolo_run_ids": {
+    "create_table_v2": "run_20260905_232307_1162e395",
+    "first_retain": "run_20260905_232308_5abb0c63",
+    "identical_retry": "run_20260905_232309_3b6661be",
+    "mismatch_check": "run_20260905_232416_5a042c97",
+    "final_count": "run_20260905_232418_751d2f07"
+  },
+  "supersedes_interpretation": "The v1 exactly-one-row retry result did not by itself prove immutable receipt replay semantics; this v2 probe verifies that stronger property without rewriting the v1 receipt."
+}

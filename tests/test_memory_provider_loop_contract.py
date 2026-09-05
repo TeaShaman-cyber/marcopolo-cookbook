@@ -41,5 +41,31 @@ class MemoryProviderLoopContractTest(unittest.TestCase):
         ):
             self.assertIn(marker, self.text)
 
+    def test_retain_replays_immutable_receipt(self):
+        for marker in (
+            "immutable receipt",
+            "attempt-local diagnostic",
+            "same stored receipt",
+        ):
+            self.assertIn(marker, self.text)
+
+    def test_operation_id_is_bound_to_request_fingerprint(self):
+        for marker in (
+            "request_fingerprint",
+            "IDEMPOTENCY_KEY_REUSE_MISMATCH",
+            "same operation_id with different canonical bytes",
+        ):
+            self.assertIn(marker, self.text)
+
+    def test_portable_core_has_versioned_exact_semantics(self):
+        for marker in (
+            "core_schema_version = memory-core-v0.1",
+            "OBSERVED | CANDIDATE | PENDING | SUPERSEDED | TOMBSTONED",
+            "created_at DESC, event_id ASC",
+            "cursor = base64url(created_at, event_id)",
+            "fixture-exact conformance",
+        ):
+            self.assertIn(marker, self.text)
+
 if __name__ == "__main__":
     unittest.main()
