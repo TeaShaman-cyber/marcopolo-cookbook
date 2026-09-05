@@ -29,4 +29,13 @@ fi
 grep -Fq 'Historical paired diagnostic evidence' "$WRAPPER" || fail "historical default-profile evidence is not clearly separated from current procedure"
 grep -Fq 'The checked-in evidence establishes bounded credential-context observations, not repeated same-operation A/B trials.' "$RUNBOOK" || fail "credential-route evidence claim remains over-broad"
 
+EARLY_ROUTING="$(sed -n '/### Established routing/,/## 6\. Governed smart-HTTP first/p' "$RUNBOOK")"
+grep -Fq 'classified transport/auth availability failure' <<<"$EARLY_ROUTING" || fail "established routing summary lacks classified fallback gate"
+if grep -Fq -- '-> GitHub API / Git Database / contents-ref only after governed transport is observed unavailable' <<<"$EARLY_ROUTING"; then
+  fail "established routing diagram still permits generic unavailability fallback"
+fi
+if grep -Fq 'only after the governed smart-HTTP route is observed unavailable, or when' <<<"$EARLY_ROUTING"; then
+  fail "established routing prose still permits generic unavailability fallback"
+fi
+
 printf 'GITHUB_ROUTE_PRIORITY PASS\n'

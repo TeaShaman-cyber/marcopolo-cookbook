@@ -235,7 +235,7 @@ GitHub remote WRITE
 
 BRANCH PUBLICATION
   governed smart-HTTP first when Git transport is appropriate
-  -> GitHub API / Git Database / contents-ref only after governed transport is observed unavailable
+  -> GitHub API / Git Database / contents-ref only after a classified transport/auth availability failure
 
 READBACK
   native ChatGPT GitHub connector
@@ -245,7 +245,7 @@ Do not spend the first write attempt on the default/read profile. A plain `git p
 
 Governed smart-HTTP is the primary branch-publication route when Git transport is appropriate. Bind `GH_CONFIG_DIR=/workspace/.config/gh-write` explicitly to the Git command group and verify the remote ref after publication.
 
-Use GitHub API / Git Database / contents-ref publication only after the governed smart-HTTP route is observed unavailable, or when the requested mutation is not a Git-transport operation and a matching typed GitHub primitive is the natural route. Preserve complete parent/tree semantics where applicable and verify the exact remote postcondition.
+Use GitHub API / Git Database / contents-ref publication only after the governed smart-HTTP failure is classified as transport/auth availability failure under the explicit `gh-write` identity and the alternate route is already authorized/admissible, or when the requested mutation is not a Git-transport operation and a matching typed GitHub primitive is the natural route. Semantic, policy, refspec, remote, and non-fast-forward failures stop the write instead of changing transport. Preserve complete parent/tree semantics where applicable and verify the exact remote postcondition.
 
 The native read path can itself become unavailable mid-session even after successful reauthorization. Classify that separately:
 
