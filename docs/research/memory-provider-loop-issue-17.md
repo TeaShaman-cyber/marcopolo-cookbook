@@ -171,7 +171,29 @@ Derived rules remain `CANDIDATE` / `PENDING` until separately accepted.
 
 ## Candidate backends
 
-### 1. Append-only JSONL receipts
+### 1. Managed PostgreSQL — first-class remote lane
+
+Managed PostgreSQL is an **authoritative mutable store candidate** for the first production-shaped storage probe:
+
+```text
+Skill / model
+    -> memory adapter
+    -> MarcoPolo governed pg connection
+    -> managed PostgreSQL
+```
+
+This lane deliberately moves mutable concurrency and durability away from the MarcoPolo local filesystem. Candidate primitives map cleanly to the contract:
+
+- `operation_id UNIQUE` plus `INSERT ... ON CONFLICT` gives a deterministic idempotency primitive;
+- transaction commit is the candidate `DURABLY_COMMITTED` point;
+- conflict-complete recall can read matches, conflicts, supersession, and tombstones from one transaction snapshot;
+- database credentials remain outside `/workspace` behind the MarcoPolo connection boundary.
+
+For this experiment, **Neon is the first free-tier probe target, not an architectural dependency on Neon**. Supabase, Prisma Postgres, or another compatible managed PostgreSQL provider may implement the same lane later.
+
+The **local embedded backends** below remain comparison / cache / rebuildable projection candidates unless a later experiment promotes one with explicit filesystem and concurrency evidence.
+
+### 2. Append-only JSONL receipts
 
 Purpose: lowest-complexity durability control.
 
@@ -194,7 +216,7 @@ Risks to test:
 - process interruption during write;
 - atomicity and durable flush behavior.
 
-### 2. Minimal SQLite + FTS5
+### 3. Minimal SQLite + FTS5
 
 Purpose: small searchable operational memory.
 
@@ -209,7 +231,7 @@ lifecycle/conflict metadata
 
 No embedding requirement.
 
-### 3. Hermes Holographic-style backend
+### 4. Hermes Holographic-style backend
 
 Current upstream Hermes Holographic is an attractive reference because its core is lightweight:
 
@@ -225,7 +247,7 @@ The experiment may either adapt its implementation or reproduce only the useful 
 
 Do not assume the SQLite file is safe on MarcoPolo persistent storage until the storage gate below passes.
 
-### 4. DuckDB
+### 5. DuckDB
 
 Purpose: deterministic structured reference backend and strong analytical read model.
 
@@ -238,7 +260,7 @@ Useful for:
 
 Historical warning: a real MarcoPolo DuckDB transient writer lock was observed when a second Python process held the DB. This proves writer contention occurred; it does **not** prove NFS was the root cause.
 
-### 5. External/service-backed provider
+### 6. External/service-backed provider
 
 Hindsight, OpenViking, or another service-backed provider is a comparison lane if embedded-file durability on MarcoPolo proves unsafe or operationally brittle.
 
@@ -281,35 +303,57 @@ PERSISTENCE_OK
 
 Do not attribute an observed lock to NFS unless filesystem-specific evidence supports that causal claim.
 
-## Canonical-evidence option
+## Canonical-evidence options
 
-A preferred safety shape to test is:
+Two different safety shapes should be compared rather than collapsed:
 
 ```text
-append-only receipts        <- canonical evidence
+remote authoritative lane
+managed PostgreSQL <- canonical mutable state
         ↓
-rebuildable projection      <- disposable/searchable state
+optional local cache / analytical projection
+
+local evidence lane
+append-only receipts <- canonical evidence
+        ↓
+rebuildable projection
     ↙           ↘
 SQLite/Holo     DuckDB
 ```
 
-If a mutable index becomes corrupted or locking behavior proves unsafe, the projection can be rebuilt without losing the canonical event history.
+The managed-Postgres probe asks whether the remote lane removes local-file locking from the authoritative write path. The local receipt shape remains valuable as a transparent comparison/recovery lane. If a local mutable index becomes corrupted, it should remain rebuildable rather than becoming the sole copy of accepted state.
 
 ## Falsifiable experiment
 
-### Probe A — storage identity
+### Probe A — managed PostgreSQL transport and write semantics
 
-Determine the actual current persistent-filesystem characteristics relevant to locking/durability. Record facts; do not infer from path names alone.
+Using a synthetic free-tier PostgreSQL target, prove the smallest remote path independently of the memory loop:
 
-### Probe B — JSONL durability control
+```text
+MarcoPolo pg sentinel
+-> synthetic table create
+-> insert with caller-stable operation_id
+-> exact readback
+-> retry same operation_id
+-> exactly one logical row
+-> fresh independent MarcoPolo invocation readback
+```
+
+A PASS here proves only the tested governed transport and storage postconditions. It does not prove Skill auto-selection, adapter attribution, cross-worker persistence, or host-level MemoryProvider lifecycle behavior.
+
+### Probe B — local storage identity
+
+Determine the actual current persistent-filesystem characteristics relevant to locking/durability for local embedded backends. Record facts; do not infer from path names alone.
+
+### Probe C — JSONL durability control
 
 Write one synthetic event, exact-read it, reopen from a fresh process/session, then exercise interrupted and concurrent writes.
 
-### Probe C — deterministic DB backend
+### Probe D — deterministic local DB backend
 
 Run the same corpus and lifecycle against DuckDB and/or minimal SQLite/FTS5. Compare lock behavior, recovery, and readback.
 
-### Probe D — recall and adapter attribution
+### Probe E — recall and adapter attribution
 
 Seed one synthetic **adapter-only canary** that exists only in the selected backend and is absent from the Skill, current chat, project fixtures, and other test memory surfaces. Instrument the adapter invocation.
 
@@ -323,25 +367,25 @@ materially identical task with adapter disabled -> expected MISS / UNKNOWN
 
 A successful model answer without an observable adapter call does not establish adapter attribution. A failed Skill-directed call must also be separated from direct-adapter backend failure.
 
-### Probe E — retain
+### Probe F — retain
 
 Run a harmless task producing one new verified synthetic lesson. Require one structured retain transaction plus exact readback.
 
-### Probe F — fresh-session reuse
+### Probe G — fresh-session reuse
 
 Start a fresh client chat and issue a materially similar task. The retained event should be recalled and influence route selection.
 
-### Probe G — negative control
+### Probe H — negative control
 
 An unrelated task should neither recall the event nor create a new memory row.
 
-### Probe H — duplicate/conflict
+### Probe I — duplicate/conflict
 
 Repeated observations must not amplify uncontrolled duplicates. Contradictory applicable observations must surface conflict/`UNKNOWN`, not silently choose one.
 
 Place an applicable contradiction deliberately outside the normal top-N retrieval cutoff. The decision packet must still surface the conflict from the same snapshot rather than returning the top match as uncontested.
 
-### Probe I — interruption, acknowledgement loss, and client boundary
+### Probe J — interruption, acknowledgement loss, and client boundary
 
 Interrupt after meaningful work but before model-mediated retain. Missing persistence must remain visibly missing. This distinguishes best-effort Skill-directed retention from a host-enforced post-turn callback.
 
@@ -362,7 +406,7 @@ CROSS_CLIENT_PERSISTENCE = UNKNOWN
 
 A same-process or same-mount reopen must not be promoted into a stronger cross-client claim.
 
-### Probe J — Holographic comparison
+### Probe K — Holographic comparison
 
 Only after SQLite/storage placement passes, run the same synthetic corpus through Holographic-style search/probe/related/contradiction semantics and compare retrieval usefulness against the deterministic baseline.
 

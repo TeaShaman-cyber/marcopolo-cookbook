@@ -32,5 +32,14 @@ class MemoryProviderLoopContractTest(unittest.TestCase):
         self.assertIn("CROSS_CLIENT_PERSISTENCE", self.text)
         self.assertIn("UNKNOWN", self.text)
 
+    def test_managed_postgres_is_first_class_backend_lane(self):
+        for marker in (
+            "Managed PostgreSQL",
+            "authoritative mutable store candidate",
+            "local embedded backends",
+            "not an architectural dependency on Neon",
+        ):
+            self.assertIn(marker, self.text)
+
 if __name__ == "__main__":
     unittest.main()
