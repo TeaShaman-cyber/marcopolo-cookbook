@@ -258,6 +258,32 @@ Do not replay a mutation merely because the preferred readback tool disappeared.
 
 Never print, inspect, or copy credential material. Use the configured credential directory without exposing secrets.
 
+### Match GitHub mutation primitive to the exact target and operation
+
+Before any GitHub write, bind the intended mutation explicitly:
+
+```text
+target_type = issue | pull_request | comment | review_thread | ref | file
+target_id   = exact number / node / path
+operation   = close | merge | edit | comment | resolve | update | delete
+expected_postcondition = exact remote state to verify
+```
+
+The selected mutation primitive must match both `target_type` and `operation`. For example:
+
+```text
+intent: close issue #3
+  -> target_type: issue
+  -> operation: close
+  -> valid primitive: issue state mutation
+  -> invalid primitive: update issue comment
+  -> postcondition: issue #3 is CLOSED
+```
+
+Observed failure: while closing one issue, the wrong comment-update primitive was invoked repeatedly against an unrelated existing comment. The comment body was byte-for-byte unchanged, but a no-op edit can still change remote metadata such as `updated_at` and create misleading activity. Treat an idempotent-looking payload as a real mutation unless the API contract proves otherwise.
+
+If the `(target_type, operation)` tuple does not match the tool primitive, stop before the write. After mutation, read back the exact intended target, not merely the object returned by the write call.
+
 ---
 
 ## 6. Ordinary `git push` can fail while GitHub API writes still work
@@ -731,6 +757,7 @@ A successful `tools/list` proves only observed capability at that time; it is no
 | Observatory issue creation | `/bin/sh` rejected `pipefail` before mutation | explicit Bash; distinguish pre-write failure |
 | this README first write | nested `bash -lc` + heredoc broke and Markdown became shell input | avoid multi-layer heredoc quoting |
 | GitHub workflow polling | MarcoPolo returned `502` while GitHub continued | connector failure != target failure |
+| Wrong GitHub mutation primitive | intended to close one issue, but repeatedly re-sent an unchanged body to an unrelated comment | bind `target_type + target_id + operation + postcondition` before selecting the write primitive |
 
 ---
 
