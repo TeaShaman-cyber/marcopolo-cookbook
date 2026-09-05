@@ -59,24 +59,87 @@ The Skill remains the policy/routing layer. The memory backend remains replaceab
 
 ## Backend-neutral adapter
 
-The first implementation contract should be deliberately small:
+The first implementation contract should be deliberately small, but its retry and recall semantics must be normative:
 
 ```text
 memory_recall(query, scope) -> evidence_packet
-memory_retain(event) -> receipt
+memory_retain(operation_id, event) -> receipt
 memory_readback(event_id) -> stored_event
 memory_reconcile(scope) -> conflicts / duplicates / status
 ```
 
-Minimum requirements:
+`operation_id` is caller-stable across retries of the same logical retain attempt. A successful retain receipt is allowed only after the canonical accepted bytes have crossed the backend's documented durable commit point:
+
+```text
+DURABLY_COMMITTED
+  = canonical accepted bytes committed before success receipt
+
+lost acknowledgement after commit
+  -> retry the same operation_id
+  -> resolve the already committed logical event
+  -> return the same logical result / receipt
+  -> never create a second observation merely because the acknowledgement was lost
+```
+
+Backends must expose a lookup path by `operation_id` or an equivalent deterministic idempotency key. Projection/index update may lag the canonical commit, but readback of the committed logical event must not silently manufacture a second event.
+
+Recall is **conflict-complete recall**, not merely top-N matching. One logical recall operation must derive its matches and applicability state from the same snapshot or an equivalent atomic view:
+
+```text
+memory_recall(query, scope)
+  -> matches
+  + applicable conflicts
+  + supersession state
+  + tombstone state
+```
+
+A matching observation must not be returned as uncontested if an applicable contradiction, superseding record, or tombstone exists outside the ordinary retrieval cutoff. `memory_reconcile()` may remain a maintenance operation, but conflict visibility required for a decision cannot depend on a later optional call.
+
+### Core conformance lane
+
+Every backend must implement one deterministic portable lane before richer retrieval is compared:
+
+```text
+stable IDs
+scope
+source / lifecycle status
+provenance
+exact deterministic filters
+deterministic ordering
+pagination / cutoff semantics
+conflict / supersession / tombstone semantics
+```
+
+Ranked FTS, Holographic `probe` / `related` / `reason`, semantic similarity, and other richer retrieval are optional capabilities above the Core conformance lane. Backend replacement is not considered meaningful if the deterministic lane changes its semantics.
+
+Minimum requirements therefore include:
 
 - deterministic structured input/output;
 - explicit provenance/source class;
 - exact readback after writes;
-- idempotent logical-event handling;
-- duplicate and conflict visibility;
+- caller-stable idempotent logical-event handling;
+- duplicate and conflict visibility from the decision snapshot;
 - `search miss = UNKNOWN`, never automatic absence;
 - no retained observation silently becomes canonical cookbook authority.
+
+## Retention safety boundary
+
+The model may propose a candidate event, but it is not the admission authority. A **retention admission gate** outside the model must run before canonical durable write:
+
+```text
+model proposal
+  -> schema validation
+  -> scope isolation
+  -> size limit
+  -> content / adversarial-input checks
+  -> secret / credential rejection
+  -> ACCEPT or REJECT
+  -> canonical durable write only after ACCEPT
+```
+
+In other words, secret or credential material must be rejected **before canonical durable write**. A later tombstone can invalidate ordinary semantic content, but it is not an acceptable erasure mechanism for a secret that was already durably appended.
+
+The acceptance suite must include a synthetic **secret canary**, adversarial content, and a cross-scope event. Expected behavior is rejection before persistence and no recall from an unauthorized scope.
 
 ## Authority boundary
 
@@ -246,9 +309,19 @@ Write one synthetic event, exact-read it, reopen from a fresh process/session, t
 
 Run the same corpus and lifecycle against DuckDB and/or minimal SQLite/FTS5. Compare lock behavior, recovery, and readback.
 
-### Probe D — recall
+### Probe D — recall and adapter attribution
 
-Seed one synthetic operational observation. In a fresh relevant task, the Skill-directed route should recall it without the user naming the row.
+Seed one synthetic **adapter-only canary** that exists only in the selected backend and is absent from the Skill, current chat, project fixtures, and other test memory surfaces. Instrument the adapter invocation.
+
+Run three controls:
+
+```text
+direct adapter read -> expected HIT
+Skill-directed task with adapter enabled -> expected HIT plus adapter-call receipt
+materially identical task with adapter disabled -> expected MISS / UNKNOWN
+```
+
+A successful model answer without an observable adapter call does not establish adapter attribution. A failed Skill-directed call must also be separated from direct-adapter backend failure.
 
 ### Probe E — retain
 
@@ -266,9 +339,28 @@ An unrelated task should neither recall the event nor create a new memory row.
 
 Repeated observations must not amplify uncontrolled duplicates. Contradictory applicable observations must surface conflict/`UNKNOWN`, not silently choose one.
 
-### Probe I — interruption
+Place an applicable contradiction deliberately outside the normal top-N retrieval cutoff. The decision packet must still surface the conflict from the same snapshot rather than returning the top match as uncontested.
+
+### Probe I — interruption, acknowledgement loss, and client boundary
 
 Interrupt after meaningful work but before model-mediated retain. Missing persistence must remain visibly missing. This distinguishes best-effort Skill-directed retention from a host-enforced post-turn callback.
+
+Separately inject or simulate the boundary:
+
+```text
+canonical append / commit succeeds
+-> success acknowledgement is lost
+-> caller retries the same operation_id
+-> exactly one logical event remains
+```
+
+Where the runtime exposes genuinely distinct storage clients, workers, mounts, or executor replacement, repeat readback and contention across that boundary. If the current MarcoPolo surface cannot positively establish such a boundary, preserve the result explicitly as:
+
+```text
+CROSS_CLIENT_PERSISTENCE = UNKNOWN
+```
+
+A same-process or same-mount reopen must not be promoted into a stronger cross-client claim.
 
 ### Probe J — Holographic comparison
 
