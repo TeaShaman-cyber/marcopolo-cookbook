@@ -16,7 +16,9 @@ PROJECT_CONTRACT=<|
 "AutomationBoundary"->"Automate repetition, not judgment, permission or authority. Keep consequential promotion and authority changes explicit"
 |>,
 
-"OperationalBootstrap"->"When work materially depends on prior project work, workspace-local or repository-local state, operational infrastructure, durable artifacts or MarcoPolo-managed resources, prefer MarcoPolo as the primary operational route. After entering MarcoPolo, follow its current workspace guidance and /workspace/RULES.md before selecting downstream tools",
+"OperationalBootstrap"->"When work materially depends on prior project work, workspace-local or repository-local state, operational infrastructure, durable artifacts or MarcoPolo-managed resources, prefer MarcoPolo as the primary operational route. After entering MarcoPolo, use its current workspace guidance and /workspace/RULES.md for runtime mechanics and downstream tool operation",
+
+"Precedence"->"For routing, authority and permission, the Project Contract governs over Workspace RULES and cookbook guidance. Workspace RULES govern MarcoPolo runtime mechanics after route selection. If same-concern guidance conflicts and explicit current user intent does not resolve it, do not silently choose the lower-level rule; report the conflict and BLOCK or remain UNKNOWN until resolved",
 
 "GitHubRouting"-><|
 "Read"->"For bounded current-state GitHub checks that do not require workspace-local processing, durable copying, bulk extraction or MarcoPolo-managed state, the native ChatGPT GitHub plugin is a valid thinner route when available",
@@ -26,9 +28,11 @@ PROJECT_CONTRACT=<|
 |>,
 
 "ChangeControl"-><|
-"IssueFirst"->"Before implementing a new research line, architecture decision, durable automation, cross-cutting repository or infrastructure change, or a project-level change that materially alters routing, authority, permission, persistence, canonical sources, verification or acceptance semantics, create or reuse a GitHub Issue in the relevant canonical repository",
+"ProjectOwnedRepositories"->"A project-owned repository is a repository maintained by the user or project as a canonical working repository. Mere read or write access to a third-party, upstream or external repository does not make it project-owned",
+"IssueFirst"->"For project-owned repositories, before implementing a new research line, a persistent architecture decision, durable automation, a cross-cutting repository or infrastructure change, or a project-level change that materially alters routing, authority, permission, persistence, canonical sources, verification or acceptance semantics, create or reuse a narrowly scoped GitHub Issue in the relevant canonical repository",
 "IssueContents"->"The Issue records the motivation and current evidence, the intended invariant or behavioral change, acceptance criteria, and final disposition. Reuse an existing canonical Issue when it already covers the work",
-"BoundedPermission"->"When current user intent already authorizes the underlying project or repository work, creating or reusing one narrowly scoped GitHub Issue for that same work is part of the authorized workflow and does not require a separate reminder. The Issue does not authorize broader implementation, promotion or unrelated mutations",
+"ProjectOwnedPermission"->"When current user intent already authorizes the underlying work in a project-owned repository, creating or reusing one narrowly scoped Issue for that same work is part of the established project workflow and does not require a separate reminder. Frequent narrow Issues are acceptable for durable traceability. The Issue does not authorize broader implementation, promotion or unrelated mutations",
+"ExternalRepositories"->"For third-party, upstream or other external repositories, creating or modifying an Issue is a separate externally consequential mutation. Require explicit mutation-specific user permission or a previously established workflow that specifically authorizes that external Issue write; repository access or permission for the underlying research does not imply permission to publish externally",
 "Exceptions"->"Do not create a new Issue for typo, formatting or wording-only corrections, purely mechanical maintenance with no behavioral or authority effect, or work already covered by an appropriate open Issue",
 "Authority"->"An Issue is a coordination and evidence container, not authority by itself. Acceptance still requires the normal versioned and reviewable change path plus an observable postcondition. Review depth remains proportional to risk; issue-first does not imply model review for every small edit"
 |>,
