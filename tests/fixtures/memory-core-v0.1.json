@@ -150,7 +150,8 @@
         "kind": "CONTRADICTS",
         "provenance": {
           "source_ref": "synthetic://memory-core-v0.1/conflict-001"
-        }
+        },
+        "scope": "alpha"
       }
     ],
     "supersession": [
@@ -160,7 +161,8 @@
         "superseding_event_id": "evt-006",
         "provenance": {
           "source_ref": "synthetic://memory-core-v0.1/supersede-001"
-        }
+        },
+        "scope": "alpha"
       }
     ],
     "tombstones": [
@@ -170,7 +172,8 @@
         "tombstone_event_id": "evt-007",
         "provenance": {
           "source_ref": "synthetic://memory-core-v0.1/tombstone-001"
-        }
+        },
+        "scope": "alpha"
       }
     ]
   },
@@ -225,7 +228,8 @@
             "kind": "CONTRADICTS",
             "provenance": {
               "source_ref": "synthetic://memory-core-v0.1/conflict-001"
-            }
+            },
+            "scope": "alpha"
           }
         ],
         "supersession": [
@@ -235,7 +239,8 @@
             "superseding_event_id": "evt-006",
             "provenance": {
               "source_ref": "synthetic://memory-core-v0.1/supersede-001"
-            }
+            },
+            "scope": "alpha"
           }
         ],
         "tombstones": [
@@ -245,7 +250,8 @@
             "tombstone_event_id": "evt-007",
             "provenance": {
               "source_ref": "synthetic://memory-core-v0.1/tombstone-001"
-            }
+            },
+            "scope": "alpha"
           }
         ],
         "next_cursor": "MjAyNi0wOS0wNlQwMjowMDowMFoKZXZ0LTAwMg",
@@ -302,7 +308,8 @@
             "kind": "CONTRADICTS",
             "provenance": {
               "source_ref": "synthetic://memory-core-v0.1/conflict-001"
-            }
+            },
+            "scope": "alpha"
           }
         ],
         "supersession": [],
@@ -380,7 +387,8 @@
             "kind": "CONTRADICTS",
             "provenance": {
               "source_ref": "synthetic://memory-core-v0.1/conflict-001"
-            }
+            },
+            "scope": "alpha"
           }
         ],
         "supersession": [],
@@ -391,7 +399,8 @@
             "tombstone_event_id": "evt-007",
             "provenance": {
               "source_ref": "synthetic://memory-core-v0.1/tombstone-001"
-            }
+            },
+            "scope": "alpha"
           }
         ],
         "next_cursor": null,
@@ -478,6 +487,94 @@
         "authorized": false,
         "error": "AUTHZ_SCOPE_DENIED",
         "backend_query_permitted": false
+      }
+    }
+  },
+  "relation_policy": {
+    "policy_version": "memory-relation-authz-v0.1",
+    "scope_binding": "same_effective_scope",
+    "admission_rule": "relation.scope == every endpoint event.scope == effective_scope",
+    "mismatch_error": "RELATION_SCOPE_MISMATCH",
+    "integrity_error": "INTEGRITY_SCOPE_VIOLATION"
+  },
+  "relation_admission_cases": {
+    "cross_scope_conflict": {
+      "trusted_execution_context": {
+        "trusted_principal_id": "principal-alpha"
+      },
+      "effective_scope": "alpha",
+      "proposed_relation": {
+        "kind": "CONTRADICTS",
+        "scope": "alpha",
+        "endpoint_scopes": [
+          "alpha",
+          "beta"
+        ]
+      },
+      "expected": {
+        "error": "RELATION_SCOPE_MISMATCH",
+        "persisted": false,
+        "unauthorized_endpoint_metadata_exposed": false
+      }
+    },
+    "cross_scope_supersession": {
+      "trusted_execution_context": {
+        "trusted_principal_id": "principal-alpha"
+      },
+      "effective_scope": "alpha",
+      "proposed_relation": {
+        "kind": "SUPERSEDES",
+        "scope": "alpha",
+        "endpoint_scopes": [
+          "alpha",
+          "beta"
+        ]
+      },
+      "expected": {
+        "error": "RELATION_SCOPE_MISMATCH",
+        "persisted": false,
+        "unauthorized_endpoint_metadata_exposed": false
+      }
+    },
+    "cross_scope_tombstone": {
+      "trusted_execution_context": {
+        "trusted_principal_id": "principal-alpha"
+      },
+      "effective_scope": "alpha",
+      "proposed_relation": {
+        "kind": "TOMBSTONES",
+        "scope": "alpha",
+        "endpoint_scopes": [
+          "alpha",
+          "beta"
+        ]
+      },
+      "expected": {
+        "error": "RELATION_SCOPE_MISMATCH",
+        "persisted": false,
+        "unauthorized_endpoint_metadata_exposed": false
+      }
+    }
+  },
+  "relation_integrity_cases": {
+    "cross_scope_relation_detected": {
+      "trusted_execution_context": {
+        "trusted_principal_id": "principal-alpha"
+      },
+      "effective_scope": "alpha",
+      "stored_relation": {
+        "relation_id": "corrupt-cross-scope-001",
+        "scope": "alpha",
+        "kind": "CONTRADICTS",
+        "endpoint_scopes": [
+          "alpha",
+          "beta"
+        ]
+      },
+      "expected": {
+        "error": "INTEGRITY_SCOPE_VIOLATION",
+        "normal_packet_returned": false,
+        "unauthorized_endpoint_metadata_exposed": false
       }
     }
   }

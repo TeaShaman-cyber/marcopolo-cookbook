@@ -85,6 +85,32 @@ class MemoryCoreFixtureTest(unittest.TestCase):
         self.assertEqual(packet["items"], [])
         self.assertEqual(packet["result_state"], "MISS_UNKNOWN")
 
+    def test_cross_scope_relation_vectors_fail_closed(self):
+        self.assertIn("relation_policy", self.fixture)
+        self.assertIn("relation_admission_cases", self.fixture)
+        policy = self.fixture["relation_policy"]
+        self.assertEqual(policy["scope_binding"], "same_effective_scope")
+        for relations in self.fixture["relations"].values():
+            for relation in relations:
+                self.assertEqual(relation["scope"], "alpha")
+        cases = self.fixture["relation_admission_cases"]
+        for name in (
+            "cross_scope_conflict",
+            "cross_scope_supersession",
+            "cross_scope_tombstone",
+        ):
+            expected = cases[name]["expected"]
+            self.assertEqual(expected["error"], "RELATION_SCOPE_MISMATCH")
+            self.assertFalse(expected["persisted"])
+            self.assertFalse(expected["unauthorized_endpoint_metadata_exposed"])
+
+    def test_corrupt_cross_scope_relation_fails_closed_on_recall(self):
+        self.assertIn("relation_integrity_cases", self.fixture)
+        expected = self.fixture["relation_integrity_cases"]["cross_scope_relation_detected"]["expected"]
+        self.assertEqual(expected["error"], "INTEGRITY_SCOPE_VIOLATION")
+        self.assertFalse(expected["normal_packet_returned"])
+        self.assertFalse(expected["unauthorized_endpoint_metadata_exposed"])
+
     def test_scope_authorization_is_bound_to_trusted_principal(self):
         auth = self.fixture["authorization"]
         self.assertEqual(auth["principal_source"], "trusted_execution_context")

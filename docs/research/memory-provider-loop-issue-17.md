@@ -187,7 +187,17 @@ next_cursor | null
 result_state = HIT | MISS_UNKNOWN | CONFLICT
 ```
 
-Each item must expose stable `event_id`, `operation_id` when present, `source_class`, `lifecycle_state`, `created_at`, explicit provenance, and canonical payload reference/content according to the fixture. Relationship entries also carry stable relation IDs and provenance. Conflict, supersession, and tombstone state must come from the **same decision snapshot** as the items and are not clipped merely because the related event falls outside the page `limit`. In particular, a returned item with an applicable contradiction outside the normal page cutoff must surface that relation in `conflicts[]`.
+Each item must expose stable `event_id`, `operation_id` when present, `source_class`, `lifecycle_state`, `created_at`, explicit provenance, and canonical payload reference/content according to the fixture. Relationship entries also carry stable relation IDs, explicit `relation.scope`, and provenance. Conflict, supersession, and tombstone state must come from the **same decision snapshot** as the items and are not clipped merely because the related event falls outside the page `limit`. In particular, a returned item with an applicable contradiction outside the normal page cutoff must surface that relation in `conflicts[]`.
+
+Relationship safety is scoped before persistence and before recall. For every conflict, supersession, or tombstone relation:
+
+```text
+relation.scope == endpoint_1.scope == endpoint_2.scope == effective_scope
+```
+
+The retention/admission boundary must resolve endpoint events inside the authorized `effective_scope` and reject any relation whose endpoint scope differs with `RELATION_SCOPE_MISMATCH` **before canonical durable write**. Relationship lookup during recall is likewise constrained to `relation.scope = effective_scope`; cross-scope relations are not an alternate channel for discovering another scope.
+
+If a legacy/corrupt row violates this invariant and is encountered during recall or reconciliation, return `INTEGRITY_SCOPE_VIOLATION` instead of a normal evidence packet. That failure **must not expose unauthorized endpoint IDs** or their provenance/payload metadata. Conflict completeness therefore means complete applicable safety state **within the authorized effective scope**, never cross-scope disclosure. The conformance fixture includes fail-closed conflict, supersession, and tombstone vectors for this rule.
 
 A zero-item exact/filter result returns `MISS_UNKNOWN`, not proof of absence.
 

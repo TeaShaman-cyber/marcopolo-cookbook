@@ -32,6 +32,15 @@ class MemoryProviderLoopContractTest(unittest.TestCase):
         self.assertIn("CROSS_CLIENT_PERSISTENCE", self.text)
         self.assertIn("UNKNOWN", self.text)
 
+    def test_relationships_are_scope_bound_and_fail_closed(self):
+        for marker in (
+            "relation.scope",
+            "RELATION_SCOPE_MISMATCH",
+            "INTEGRITY_SCOPE_VIOLATION",
+            "must not expose unauthorized endpoint IDs",
+        ):
+            self.assertIn(marker, self.text)
+
     def test_scope_is_authorized_from_trusted_execution_context(self):
         for marker in (
             "trusted_principal_id",
