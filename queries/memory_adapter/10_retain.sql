@@ -12,7 +12,7 @@ WITH incoming AS (
 ), candidate AS (
     SELECT incoming.*, clock_timestamp() AS committed_at
     FROM incoming
-), ins AS (
+), upserted AS (
     INSERT INTO public.theseus_memory_events_v01(
         operation_id,
         request_fingerprint,
@@ -46,25 +46,16 @@ WITH incoming AS (
             'commit_state', 'DURABLY_COMMITTED'
         )
     FROM candidate
-    ON CONFLICT (operation_id) DO NOTHING
+    ON CONFLICT (operation_id) DO UPDATE
+        SET operation_id = theseus_memory_events_v01.operation_id
     RETURNING *
 )
-SELECT
-    'OK'::text AS status,
-    true AS attempt_inserted,
-    operation_id,
-    request_fingerprint,
-    event_id,
-    committed_at,
-    receipt::text AS stored_receipt_json
-FROM ins
-UNION ALL
 SELECT
     CASE
         WHEN stored.request_fingerprint = incoming.request_fingerprint THEN 'OK'
         ELSE 'IDEMPOTENCY_KEY_REUSE_MISMATCH'
     END AS status,
-    false AS attempt_inserted,
+    NULL::boolean AS attempt_inserted,
     stored.operation_id,
     stored.request_fingerprint,
     stored.event_id,
@@ -73,7 +64,5 @@ SELECT
         WHEN stored.request_fingerprint = incoming.request_fingerprint THEN stored.receipt::text
         ELSE NULL
     END AS stored_receipt_json
-FROM public.theseus_memory_events_v01 AS stored
-CROSS JOIN incoming
-WHERE stored.operation_id = incoming.operation_id
-  AND NOT EXISTS (SELECT 1 FROM ins);
+FROM upserted AS stored
+CROSS JOIN incoming;

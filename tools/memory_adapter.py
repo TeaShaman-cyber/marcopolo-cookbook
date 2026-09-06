@@ -6,10 +6,28 @@ import json
 import subprocess
 from pathlib import Path
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Mapping, Protocol
 
 CORE_SCHEMA_VERSION = "memory-core-v0.1"
 LIFECYCLE_STATES = {"OBSERVED", "CANDIDATE", "PENDING", "SUPERSEDED", "TOMBSTONED"}
+
+SENSITIVE_FIELD_NAMES = {
+    "api_key",
+    "apikey",
+    "password",
+    "passwd",
+    "token",
+    "access_token",
+    "refresh_token",
+    "client_secret",
+    "authorization",
+    "cookie",
+    "private_key",
+    "credential",
+    "credentials",
+    "secret",
+}
 
 
 class MemoryAdapterError(RuntimeError):
@@ -70,7 +88,7 @@ class ConnectionQueryRunner:
         executable: str = "connection",
     ) -> None:
         self.connection_name = connection_name
-        self.query_dir = Path(query_dir)
+        self.query_dir = Path(query_dir).resolve()
         self.timeout_seconds = timeout_seconds
         self.executable = executable
 
@@ -182,6 +200,20 @@ def hex_transport(value: str | bytes) -> str:
     return raw.hex()
 
 
+def contains_structured_credential(value: Any) -> bool:
+    if isinstance(value, Mapping):
+        for key, child in value.items():
+            normalized = str(key).strip().lower().replace("-", "_")
+            if normalized in SENSITIVE_FIELD_NAMES and child not in (None, "", [], {}):
+                return True
+            if contains_structured_credential(child):
+                return True
+        return False
+    if isinstance(value, (list, tuple)):
+        return any(contains_structured_credential(child) for child in value)
+    return False
+
+
 def _encode_cursor(created_at: str, event_id: str) -> str:
     raw = f"{created_at}\n{event_id}".encode("utf-8")
     return base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
@@ -254,6 +286,19 @@ class MemoryAdapter:
             raise AuthorizationError("AUTHZ_SCOPE_DENIED")
         if event["lifecycle_state"] not in LIFECYCLE_STATES:
             raise AdmissionError("LIFECYCLE_INVALID")
+        created_at = event["created_at"]
+        if not isinstance(created_at, str):
+            raise AdmissionError("CREATED_AT_INVALID")
+        try:
+            parsed_created_at = datetime.strptime(created_at, "%Y-%m-%dT%H:%M:%SZ")
+        except ValueError as exc:
+            raise AdmissionError("CREATED_AT_INVALID") from exc
+        if parsed_created_at.strftime("%Y-%m-%dT%H:%M:%SZ") != created_at:
+            raise AdmissionError("CREATED_AT_INVALID")
+        if contains_structured_credential(
+            event["payload"]
+        ) or contains_structured_credential(event["provenance"]):
+            raise AdmissionError("CREDENTIAL_MATERIAL_REJECTED")
         if not isinstance(event["provenance"], Mapping) or not event["provenance"].get(
             "source_ref"
         ):

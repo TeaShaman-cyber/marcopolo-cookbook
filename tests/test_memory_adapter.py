@@ -107,6 +107,57 @@ class MemoryAdapterTest(unittest.TestCase):
         self.assertEqual(result["status"], "OK")
         self.assertEqual(len(runner.calls), 1)
 
+    def test_fractional_created_at_is_rejected_before_runner(self):
+        runner = FakeRunner()
+        adapter = self.make_adapter(runner)
+        event = {
+            "event_id": "evt-fractional-time",
+            "scope": "alpha",
+            "source_class": "synthetic",
+            "lifecycle_state": "OBSERVED",
+            "created_at": "2026-09-06T06:00:00.900Z",
+            "provenance": {"source_ref": "synthetic://fractional-time"},
+            "payload": {"kind": "synthetic"},
+        }
+        with self.assertRaisesRegex(AdmissionError, "CREATED_AT_INVALID"):
+            adapter.retain(self.context, "op-fractional-time", event)
+        self.assertEqual(runner.calls, [])
+
+    def test_structured_credential_material_is_rejected_before_runner(self):
+        runner = FakeRunner()
+        adapter = self.make_adapter(runner)
+        event = {
+            "event_id": "evt-secret-canary",
+            "scope": "alpha",
+            "source_class": "synthetic",
+            "lifecycle_state": "OBSERVED",
+            "created_at": "2026-09-06T06:00:00Z",
+            "provenance": {"source_ref": "synthetic://secret-canary"},
+            "payload": {"nested": {"api_key": "synthetic-secret-canary"}},
+        }
+        with self.assertRaisesRegex(AdmissionError, "CREDENTIAL_MATERIAL_REJECTED"):
+            adapter.retain(self.context, "op-secret-canary", event)
+        self.assertEqual(runner.calls, [])
+
+    def test_credential_words_in_ordinary_text_are_not_rejected(self):
+        runner = FakeRunner([{"status": "OK", "stored_receipt": {}}])
+        adapter = self.make_adapter(runner)
+        event = {
+            "event_id": "evt-secret-words",
+            "scope": "alpha",
+            "source_class": "synthetic",
+            "lifecycle_state": "OBSERVED",
+            "created_at": "2026-09-06T06:00:00Z",
+            "provenance": {"source_ref": "synthetic://secret-words"},
+            "payload": {
+                "text": "Documentation discusses password, token, and api_key fields without containing credentials."
+            },
+        }
+        self.assertEqual(
+            adapter.retain(self.context, "op-secret-words", event)["status"], "OK"
+        )
+        self.assertEqual(len(runner.calls), 1)
+
     def test_oversize_event_is_deterministic_hard_fail(self):
         runner = FakeRunner()
         adapter = MemoryAdapter(
@@ -327,3 +378,23 @@ class RecordingRunnerTest(unittest.TestCase):
             ],
         )
         self.assertNotIn("736563726574", json.dumps(runner.trace))
+
+
+class RetainConcurrencySqlContractTest(unittest.TestCase):
+    def test_retain_conflict_path_returns_row_from_same_statement(self):
+        sql = (
+            Path(__file__).resolve().parents[1]
+            / "queries"
+            / "memory_adapter"
+            / "10_retain.sql"
+        ).read_text(encoding="utf-8")
+        self.assertIn("ON CONFLICT (operation_id) DO UPDATE", sql)
+        self.assertNotIn("ON CONFLICT (operation_id) DO NOTHING", sql)
+
+
+class ConnectionQueryRunnerPathTest(unittest.TestCase):
+    def test_query_dir_is_resolved_to_absolute_path(self):
+        runner = ConnectionQueryRunner(
+            connection_name="synthetic-pg", query_dir="queries/memory_adapter"
+        )
+        self.assertTrue(runner.query_dir.is_absolute())
