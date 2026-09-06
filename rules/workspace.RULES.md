@@ -35,6 +35,20 @@ If Session Search is unavailable or its corpus verification fails, state that
 explicitly. Do not silently present remembered, reconstructed, or other
 retrieved context as if it came from Session Search.
 
+## Shell dialect
+
+`workspace_shell` command strings may execute through `/bin/sh`, not Bash.
+Use plain POSIX-compatible shell for simple commands. When a command depends on
+Bash semantics such as `pipefail`, `[[ ... ]]`, arrays, process substitution,
+or a Bash script, invoke Bash explicitly with `bash -lc '<command>'` or `bash script.sh`.
+
+A shell-dialect error that occurs before target logic runs is a pre-execution
+failure, not evidence that the intended mutation failed or partially succeeded.
+Verify the target postcondition before retrying.
+
+Detailed quoting, heredoc, deterministic payload transport, and connector
+failure procedures remain in `marcopolo/README.md`.
+
 ## GitHub operational route
 
 When GitHub work is performed through MarcoPolo, use the workspace GitHub
