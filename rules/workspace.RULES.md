@@ -2,8 +2,9 @@
 Canonical source: TeaShaman-cyber/marcopolo-cookbook/rules/workspace.RULES.md
 Runtime projection target: /workspace/RULES.md
 
-This file is reviewed Git state. The runtime copy is a projection, not an
-independent authority. After materializing it, verify content equality/hash.
+This file is version-controlled Git state. Human acceptance and Git promotion
+remain separate from runtime materialization. The runtime copy is a projection,
+not an independent authority. After materializing it, verify content equality/hash.
 -->
 
 # MarcoPolo Workspace Rules
