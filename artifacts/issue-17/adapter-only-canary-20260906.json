@@ -1,0 +1,109 @@
+{
+  "adapter_disabled_control": "PASS",
+  "bootstrap": "PASS",
+  "canary_sha256": "16ccfa952e25e555f91c084f261160799a15133ee3de5b543ebf62def5cb8ab6",
+  "event_id": "evt-adapter-canary-5eca9f986ea6",
+  "model_mediated_skill_attribution": "NOT_TESTED",
+  "operation_id": "op-adapter-canary-5eca9f986ea6",
+  "probe": "adapter-only-canary-v0.1",
+  "readback": "PASS",
+  "recall": "PASS",
+  "reconcile": "PASS",
+  "retain": "PASS",
+  "scope": "synthetic/issue-17/adapter-only",
+  "trace": [
+    {
+      "param_names": [],
+      "query_name": "bootstrap",
+      "result_status": "OK",
+      "sequence": 1
+    },
+    {
+      "param_names": [
+        "created_at_hex",
+        "event_id_hex",
+        "lifecycle_state_hex",
+        "operation_id_hex",
+        "payload_json_hex",
+        "provenance_json_hex",
+        "request_fingerprint_hex",
+        "scope_hex",
+        "source_class_hex"
+      ],
+      "query_name": "retain",
+      "result_status": "OK",
+      "sequence": 2
+    },
+    {
+      "param_names": [
+        "event_id_hex",
+        "scope_hex"
+      ],
+      "query_name": "readback",
+      "result_status": "OK",
+      "sequence": 3
+    },
+    {
+      "param_names": [
+        "created_after_hex",
+        "created_before_hex",
+        "cursor_created_at_hex",
+        "cursor_event_id_hex",
+        "event_id_hex",
+        "has_created_after",
+        "has_created_before",
+        "has_cursor",
+        "has_event_id",
+        "has_lifecycle",
+        "has_operation_id",
+        "has_source_class",
+        "lifecycle_json_hex",
+        "limit",
+        "operation_id_hex",
+        "scope_hex",
+        "source_class_hex"
+      ],
+      "query_name": "recall",
+      "result_status": "HIT",
+      "sequence": 4
+    },
+    {
+      "param_names": [
+        "scope_hex"
+      ],
+      "query_name": "reconcile",
+      "result_status": "OK",
+      "sequence": 5
+    }
+  ],
+  "implementation_sha": "d4ceec9cac8095d404841127699e27aad38b0b5b",
+  "observed_at": "2026-09-06T06:54:31Z",
+  "direct_adapter_canary": "PASS",
+  "independent_neon_readback": "PASS",
+  "independent_readback": {
+    "event_id": "evt-adapter-canary-5eca9f986ea6",
+    "operation_id": "op-adapter-canary-5eca9f986ea6",
+    "scope": "synthetic/issue-17/adapter-only",
+    "source_class": "synthetic",
+    "lifecycle_state": "OBSERVED",
+    "commit_state": "DURABLY_COMMITTED",
+    "payload_kind": "synthetic_adapter_canary"
+  },
+  "secret_hygiene": {
+    "raw_canary_stored_in_receipt": false,
+    "provider_project_id_stored": false,
+    "connection_string_stored": false,
+    "credential_stored": false
+  },
+  "remaining_gates": {
+    "model_mediated_skill_attribution": "NOT_TESTED",
+    "fresh_session_recall": "NOT_TESTED"
+  },
+  "pre_database_attempts": [
+    {
+      "status": "HARNESS_IMPORT_FAILED",
+      "failure": "PYTHONPATH_IMPORT_PATH",
+      "database_mutation": false
+    }
+  ]
+}
