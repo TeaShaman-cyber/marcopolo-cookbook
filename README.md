@@ -30,6 +30,13 @@ A path, dependency, or artifact observed in one runtime is not assumed to exist 
 
 Additional top-level scripts provide GitHub/wiki wrappers and access checks used by the workspace.
 
+## Small review methods
+
+- [Feynman checkpoint](docs/methods/feynman-checkpoint.md) — before design/review work, explain the mechanism simply and remove complexity that the task does not require.
+- [Five Whys](docs/methods/five-whys.md) — after an observed failure, trace evidence-backed causes to the smallest responsible layer and verify the postcondition.
+
+Keep these methods small and separate. They are reusable operational policies, not a new reasoning framework; future context routing may include them without duplicating their prose.
+
 ## Security rule
 
 Secrets, tokens, cookies, auth caches, `.env` files, private keys, and generated credential dumps are never committed. Authentication-related scripts are eligible only when they contain reusable logic and symbolic references to credential sources rather than credential values.
