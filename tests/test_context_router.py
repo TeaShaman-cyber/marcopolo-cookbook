@@ -1,9 +1,12 @@
-from pathlib import Path
+import json
 import tempfile
 import unittest
+from pathlib import Path
 
 from tools.context_router import (
     ContextRoutingError,
+    compile_context,
+    extract_section,
     load_manifest,
     resolve_route_chain,
     select_route,
@@ -209,6 +212,140 @@ class ContextRouterSelectionTest(unittest.TestCase):
             resolve_route_chain(value, "winner"),
             ["root", "shared", "left", "right", "winner"],
         )
+
+
+class ContextRouterCompileTest(unittest.TestCase):
+    def test_extract_section_includes_children_and_stops_at_peer(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "doc.md").write_text(
+                "# Root\nintro\n\n## A\nalpha\n\n### A child\nchild\n\n## B\nbeta\n",
+                encoding="utf-8",
+            )
+            section = extract_section(root, {"path": "doc.md", "heading": "## A"})
+            self.assertEqual(section["path"], "doc.md")
+            self.assertEqual(section["heading"], "## A")
+            self.assertIn("### A child\nchild", section["content"])
+            self.assertNotIn("## B", section["content"])
+
+    def test_extract_section_preserves_utf8(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "doc.md").write_text("## Чай\nпривет ☕\n", encoding="utf-8")
+            section = extract_section(root, {"path": "doc.md", "heading": "## Чай"})
+            self.assertIn("привет ☕", section["content"])
+
+    def test_extract_section_rejects_missing_heading(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "doc.md").write_text("## B\nbeta\n", encoding="utf-8")
+            with self.assertRaisesRegex(ContextRoutingError, "SECTION_HEADING_MISSING"):
+                extract_section(root, {"path": "doc.md", "heading": "## A"})
+
+    def test_extract_section_rejects_ambiguous_heading(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "doc.md").write_text("## A\none\n## A\ntwo\n", encoding="utf-8")
+            with self.assertRaisesRegex(
+                ContextRoutingError, "SECTION_HEADING_AMBIGUOUS"
+            ):
+                extract_section(root, {"path": "doc.md", "heading": "## A"})
+
+    def test_compile_context_emits_matched_packet(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "doc.md").write_text("## A\nalpha\n", encoding="utf-8")
+            value = manifest(
+                [
+                    route(
+                        "workspace-shell.structured-edit",
+                        priority=10,
+                        match={
+                            "surface": ["workspace_shell"],
+                            "operation": ["structured_edit"],
+                        },
+                        sections=[{"path": "doc.md", "heading": "## A"}],
+                    )
+                ]
+            )
+            packet = compile_context(
+                value,
+                {"operation": "structured_edit", "surface": "workspace_shell"},
+                root,
+            )
+            self.assertEqual(packet["schema_version"], "cookbook-context-v0.1")
+            self.assertEqual(packet["route_state"], "MATCHED")
+            self.assertEqual(packet["route_id"], "workspace-shell.structured-edit")
+            self.assertEqual(
+                packet["labels"],
+                {"operation": "structured_edit", "surface": "workspace_shell"},
+            )
+            self.assertEqual(
+                [(s["path"], s["heading"]) for s in packet["sections"]],
+                [("doc.md", "## A")],
+            )
+
+    def test_compile_context_emits_unknown_packet(self):
+        packet = compile_context(manifest([]), {"domain": "unclassified"}, Path.cwd())
+        self.assertEqual(
+            packet,
+            {
+                "schema_version": "cookbook-context-v0.1",
+                "route_state": "UNKNOWN",
+                "route_id": "default.unknown",
+                "labels": {"domain": "unclassified"},
+                "sections": [],
+            },
+        )
+
+    def test_compile_context_rejects_budget_overflow_before_partial_packet(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "doc.md").write_text("## A\na\n## B\nb\n", encoding="utf-8")
+            value = manifest(
+                [
+                    route("parent", sections=[{"path": "doc.md", "heading": "## A"}]),
+                    route(
+                        "winner",
+                        priority=10,
+                        match={"surface": ["workspace_shell"]},
+                        inherits=["parent"],
+                        sections=[{"path": "doc.md", "heading": "## B"}],
+                    ),
+                ]
+            )
+            value["defaults"]["max_sections"] = 1
+            with self.assertRaisesRegex(ContextRoutingError, "CONTEXT_BUDGET_EXCEEDED"):
+                compile_context(value, {"surface": "workspace_shell"}, root)
+
+    def test_fixture_cases(self):
+        fixture_path = Path("tests/fixtures/context-routing-v0.1.json")
+        fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            for path, content in fixture["documents"].items():
+                target = root / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(content, encoding="utf-8")
+            value = fixture["manifest"]
+            validate_manifest(value, root)
+            for case in fixture["cases"]:
+                if "expected_error" in case:
+                    with self.assertRaisesRegex(
+                        ContextRoutingError, case["expected_error"]
+                    ):
+                        compile_context(value, case["labels"], root)
+                    continue
+                packet = compile_context(value, case["labels"], root)
+                self.assertEqual(
+                    packet["route_state"], case["route_state"], case["name"]
+                )
+                self.assertEqual(packet["route_id"], case["route_id"], case["name"])
+                self.assertEqual(
+                    [s["heading"] for s in packet["sections"]],
+                    case["headings"],
+                    case["name"],
+                )
 
 
 if __name__ == "__main__":

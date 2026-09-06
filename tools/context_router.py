@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 SCHEMA_VERSION = "cookbook-routing-v0.1"
 LABEL_KEY_RE = re.compile(r"^[a-z0-9_.-]+$")
@@ -208,3 +209,81 @@ def resolve_route_chain(manifest: Mapping[str, Any], route_id: str) -> list[str]
 
     visit(route_id)
     return result
+
+
+def extract_section(repo_root: Path, ref: Mapping[str, str]) -> dict[str, str]:
+    root = repo_root.resolve()
+    path_value = ref.get("path")
+    heading = ref.get("heading")
+    _require(isinstance(path_value, str) and bool(path_value), "SECTION_PATH_INVALID")
+    _require(isinstance(heading, str) and bool(heading), "SECTION_HEADING_INVALID")
+
+    candidate = (root / path_value).resolve()
+    if not candidate.is_relative_to(root):
+        raise ContextRoutingError("SECTION_PATH_ESCAPE")
+    if not candidate.is_file():
+        raise ContextRoutingError("SECTION_FILE_MISSING")
+
+    lines = candidate.read_text(encoding="utf-8").splitlines(keepends=True)
+    matches = [i for i, line in enumerate(lines) if line.rstrip("\r\n") == heading]
+    if not matches:
+        raise ContextRoutingError("SECTION_HEADING_MISSING")
+    if len(matches) > 1:
+        raise ContextRoutingError("SECTION_HEADING_AMBIGUOUS")
+
+    heading_match = re.match(r"^(#{1,6})\s", heading)
+    if heading_match is None:
+        raise ContextRoutingError("SECTION_HEADING_INVALID")
+    selected_level = len(heading_match.group(1))
+    start = matches[0]
+    end = len(lines)
+    for index in range(start + 1, len(lines)):
+        line = lines[index].rstrip("\r\n")
+        next_heading = re.match(r"^(#{1,6})\s", line)
+        if next_heading is not None and len(next_heading.group(1)) <= selected_level:
+            end = index
+            break
+
+    return {
+        "path": path_value,
+        "heading": heading,
+        "content": "".join(lines[start:end]),
+    }
+
+
+def compile_context(
+    manifest: Mapping[str, Any], labels: Mapping[str, str], repo_root: Path
+) -> dict[str, Any]:
+    normalized_labels = dict(sorted(labels.items()))
+    route_id = select_route(manifest, labels)
+    fallback = manifest["defaults"]["fallback_route"]
+    if route_id is None:
+        return {
+            "schema_version": "cookbook-context-v0.1",
+            "route_state": "UNKNOWN",
+            "route_id": fallback,
+            "labels": normalized_labels,
+            "sections": [],
+        }
+
+    routes = _route_map(manifest)
+    refs: list[Mapping[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    for chain_id in resolve_route_chain(manifest, route_id):
+        for ref in routes[chain_id]["sections"]:
+            key = (ref["path"], ref["heading"])
+            if key in seen:
+                continue
+            seen.add(key)
+            refs.append(ref)
+
+    if len(refs) > manifest["defaults"]["max_sections"]:
+        raise ContextRoutingError("CONTEXT_BUDGET_EXCEEDED")
+
+    return {
+        "schema_version": "cookbook-context-v0.1",
+        "route_state": "MATCHED",
+        "route_id": route_id,
+        "labels": normalized_labels,
+        "sections": [extract_section(repo_root, ref) for ref in refs],
+    }

@@ -1,0 +1,132 @@
+{
+  "schema_version": "context-routing-fixture-v0.1",
+  "documents": {
+    "fixture.md": "## Global\nverify postcondition\n## Shell\nprefer structured route\n## Direct\nuse direct cli\n## Unsafe\nunsafe direct write\n## GitHub Write\nuse governed write\n## GitHub Read\nuse read path\n## Budget Parent A\na\n## Budget Parent B\nb\n## Budget Child\nc\n"
+  },
+  "manifest": {
+    "schema_version": "cookbook-routing-v0.1",
+    "defaults": {
+      "max_sections": 2,
+      "fallback_route": "default.unknown"
+    },
+    "routes": [
+      {
+        "id": "default.unknown",
+        "priority": -1000,
+        "match": {},
+        "inherits": [],
+        "inhibits": [],
+        "sections": []
+      },
+      {
+        "id": "global.policy",
+        "priority": -500,
+        "match": {"role": ["inherited-only"]},
+        "inherits": [],
+        "inhibits": [],
+        "sections": [{"path": "fixture.md", "heading": "## Global"}]
+      },
+      {
+        "id": "workspace-shell.structured-edit",
+        "priority": 100,
+        "match": {"surface": ["workspace_shell"], "operation": ["structured_edit"]},
+        "inherits": ["global.policy"],
+        "inhibits": [],
+        "sections": [{"path": "fixture.md", "heading": "## Shell"}]
+      },
+      {
+        "id": "workspace-shell.direct-cli",
+        "priority": 90,
+        "match": {"surface": ["workspace_shell"], "operation": ["direct_cli"]},
+        "inherits": ["global.policy"],
+        "inhibits": [],
+        "sections": [{"path": "fixture.md", "heading": "## Direct"}]
+      },
+      {
+        "id": "github.unsafe-direct-mutation",
+        "priority": 200,
+        "match": {"domain": ["github"], "operation": ["mutation"]},
+        "inherits": [],
+        "inhibits": [],
+        "sections": [{"path": "fixture.md", "heading": "## Unsafe"}]
+      },
+      {
+        "id": "github.governed-mutation",
+        "priority": 100,
+        "match": {"domain": ["github"], "operation": ["mutation"]},
+        "inherits": ["global.policy"],
+        "inhibits": ["github.unsafe-direct-mutation"],
+        "sections": [{"path": "fixture.md", "heading": "## GitHub Write"}]
+      },
+      {
+        "id": "github.read",
+        "priority": 100,
+        "match": {"domain": ["github"], "operation": ["read"]},
+        "inherits": ["global.policy"],
+        "inhibits": [],
+        "sections": [{"path": "fixture.md", "heading": "## GitHub Read"}]
+      },
+      {
+        "id": "budget.parent",
+        "priority": -400,
+        "match": {"role": ["budget-parent-only"]},
+        "inherits": [],
+        "inhibits": [],
+        "sections": [
+          {"path": "fixture.md", "heading": "## Budget Parent A"},
+          {"path": "fixture.md", "heading": "## Budget Parent B"}
+        ]
+      },
+      {
+        "id": "budget.overflow",
+        "priority": 100,
+        "match": {"domain": ["test"], "operation": ["budget"]},
+        "inherits": ["budget.parent"],
+        "inhibits": [],
+        "sections": [{"path": "fixture.md", "heading": "## Budget Child"}]
+      }
+    ]
+  },
+  "cases": [
+    {
+      "name": "structured workspace edit",
+      "labels": {"surface": "workspace_shell", "operation": "structured_edit"},
+      "route_state": "MATCHED",
+      "route_id": "workspace-shell.structured-edit",
+      "headings": ["## Global", "## Shell"]
+    },
+    {
+      "name": "simple direct cli",
+      "labels": {"surface": "workspace_shell", "operation": "direct_cli"},
+      "route_state": "MATCHED",
+      "route_id": "workspace-shell.direct-cli",
+      "headings": ["## Global", "## Direct"]
+    },
+    {
+      "name": "github mutation",
+      "labels": {"domain": "github", "operation": "mutation"},
+      "route_state": "MATCHED",
+      "route_id": "github.governed-mutation",
+      "headings": ["## Global", "## GitHub Write"]
+    },
+    {
+      "name": "github read",
+      "labels": {"domain": "github", "operation": "read"},
+      "route_state": "MATCHED",
+      "route_id": "github.read",
+      "headings": ["## Global", "## GitHub Read"]
+    },
+    {
+      "name": "unknown task",
+      "labels": {"domain": "unclassified"},
+      "route_state": "UNKNOWN",
+      "route_id": "default.unknown",
+      "headings": []
+    },
+    {
+      "name": "context budget overflow",
+      "labels": {"domain": "test", "operation": "budget"},
+      "expected_error": "CONTEXT_BUDGET_EXCEEDED"
+    }
+  ]
+}
