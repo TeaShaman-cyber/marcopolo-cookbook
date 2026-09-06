@@ -46,6 +46,13 @@ A shell-dialect error that occurs before target logic runs is a pre-execution
 failure, not evidence that the intended mutation failed or partially succeeded.
 Verify the target postcondition before retrying.
 
+The MarcoPolo control plane may also reject a workspace_shell payload before
+execution when the request contains a literal parent-path sequence formed by
+two dots followed immediately by a slash. Treat that as a pre-execution
+transport/filter failure, not evidence about the target mutation. When the path
+is legitimate, construct or encode it inside the shell/runtime so that sequence
+is not present in the outer request payload, then verify the target postcondition.
+
 Detailed quoting, heredoc, deterministic payload transport, and connector
 failure procedures remain in `marcopolo/README.md`.
 
