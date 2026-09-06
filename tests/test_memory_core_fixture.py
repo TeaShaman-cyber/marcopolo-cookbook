@@ -67,6 +67,14 @@ class MemoryCoreFixtureTest(unittest.TestCase):
         self.assertNotIn(conflict["right_event_id"], page_ids)
         self.assertEqual(conflict["relation_id"], "conflict-001")
 
+    def test_conflict_surfaces_when_second_endpoint_is_paged(self):
+        packet = self.fixture["cases"]["scope_alpha_page_2"]["expected"]
+        page_ids = {item["event_id"] for item in packet["items"]}
+        self.assertIn("evt-005", page_ids)
+        self.assertTrue(packet["conflicts"], "page 2 must surface applicable conflicts")
+        self.assertEqual(packet["conflicts"][0]["relation_id"], "conflict-001")
+        self.assertEqual(packet["result_state"], "CONFLICT")
+
     def test_supersession_and_tombstone_are_fixture_exact(self):
         packet = self.fixture["cases"]["scope_alpha_page_1"]["expected"]
         self.assertEqual(packet["supersession"][0]["relation_id"], "supersede-001")
