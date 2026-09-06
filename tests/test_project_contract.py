@@ -41,6 +41,12 @@ class ProjectContractSourceTest(unittest.TestCase):
         text = CONTRACT.read_text(encoding="utf-8")
         self.assertLessEqual(len(text), 8000, f"project contract is {len(text)} chars")
 
+    def test_compaction_preserves_reviewed_semantics(self):
+        text = CONTRACT.read_text(encoding="utf-8")
+        self.assertIn("Accepted Git source:", text)
+        self.assertIn("versioned, reviewable, reproducible state", text)
+        self.assertIn("Report unresolved same-concern conflicts", text)
+
     def test_project_contract_stays_above_runtime_mechanics(self):
         text = CONTRACT.read_text(encoding="utf-8")
 
