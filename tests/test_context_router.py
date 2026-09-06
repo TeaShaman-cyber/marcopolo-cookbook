@@ -8,7 +8,6 @@ from tools.context_router import (
     compile_context,
     extract_section,
     load_manifest,
-    resolve_route_chain,
     select_route,
     validate_manifest,
 )
@@ -16,311 +15,293 @@ from tools.context_router import (
 SCHEMA = "cookbook-routing-v0.1"
 
 
-def route(route_id="x", **overrides):
+def section(path="doc.md", heading="## A"):
+    return {"path": path, "heading": heading}
+
+
+def route(route_id="x", match=None, include=None, sections=None, **extra):
     value = {
         "id": route_id,
-        "priority": 1,
-        "match": {},
-        "inherits": [],
-        "inhibits": [],
-        "sections": [],
+        "match": {"kind": route_id} if match is None else match,
+        "include": include or [],
+        "sections": sections or [],
     }
-    value.update(overrides)
+    value.update(extra)
     return value
 
 
-def manifest(routes):
+def manifest(routes=None, policies=None, max_sections=4):
     return {
         "schema_version": SCHEMA,
-        "defaults": {"max_sections": 4, "fallback_route": "default.unknown"},
-        "routes": [route("default.unknown", priority=-1000), *routes],
+        "defaults": {"max_sections": max_sections, "fallback_route": "default.unknown"},
+        "policies": policies or {},
+        "routes": routes or [],
     }
 
 
-class ContextRouterLoadTest(unittest.TestCase):
-    def test_non_object_manifest_is_rejected(self):
-        with tempfile.TemporaryDirectory() as td:
-            path = Path(td) / "routes.json"
-            path.write_text("[]", encoding="utf-8")
-            with self.assertRaisesRegex(ContextRoutingError, "MANIFEST_INVALID"):
-                load_manifest(path)
+class SimplifiedManifestTest(unittest.TestCase):
+    def test_minimal_manifest_is_valid(self):
+        validate_manifest(manifest(), Path.cwd())
 
-
-class ContextRouterManifestTest(unittest.TestCase):
-    def test_invalid_schema_version_is_rejected(self):
-        value = manifest([])
-        value["schema_version"] = "wrong"
-        with self.assertRaisesRegex(ContextRoutingError, "SCHEMA_VERSION_INVALID"):
-            validate_manifest(value, Path.cwd())
-
-    def test_duplicate_route_id_is_rejected(self):
-        with self.assertRaisesRegex(ContextRoutingError, "ROUTE_ID_DUPLICATE"):
+    def test_route_match_must_be_nonempty_exact_strings(self):
+        with self.assertRaisesRegex(ContextRoutingError, "ROUTE_MATCH_EMPTY"):
+            validate_manifest(manifest([route("x", match={})]), Path.cwd())
+        with self.assertRaisesRegex(ContextRoutingError, "MATCH_VALUE_INVALID"):
             validate_manifest(
-                manifest([route("x"), route("x", priority=2)]), Path.cwd()
+                manifest([route("x", match={"surface": ["workspace_shell"]})]),
+                Path.cwd(),
             )
 
-    def test_invalid_label_key_is_rejected(self):
-        value = manifest([route("x", match={"Bad Key": ["value"]})])
-        with self.assertRaisesRegex(ContextRoutingError, "LABEL_KEY_INVALID"):
-            validate_manifest(value, Path.cwd())
-
-    def test_missing_inheritance_target_is_rejected(self):
-        value = manifest([route("x", inherits=["missing"])])
-        with self.assertRaisesRegex(ContextRoutingError, "INHERIT_TARGET_MISSING"):
-            validate_manifest(value, Path.cwd())
-
-    def test_missing_inhibition_target_is_rejected(self):
-        value = manifest([route("x", inhibits=["missing"])])
-        with self.assertRaisesRegex(ContextRoutingError, "INHIBIT_TARGET_MISSING"):
-            validate_manifest(value, Path.cwd())
-
-    def test_inheritance_cycle_is_rejected(self):
-        value = manifest([route("a", inherits=["b"]), route("b", inherits=["a"])])
-        with self.assertRaisesRegex(ContextRoutingError, "INHERITANCE_CYCLE"):
-            validate_manifest(value, Path.cwd())
-
-    def test_duplicate_section_reference_is_rejected(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            (root / "doc.md").write_text("## A\nbody\n", encoding="utf-8")
-            ref = {"path": "doc.md", "heading": "## A"}
-            value = manifest([route("x", sections=[ref, dict(ref)])])
-            with self.assertRaisesRegex(ContextRoutingError, "SECTION_DUPLICATE"):
-                validate_manifest(value, root)
-
-    def test_section_path_escape_is_rejected(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td) / "repo"
-            root.mkdir()
-            outside = Path(td) / "outside.md"
-            outside.write_text("## A\nbody\n", encoding="utf-8")
-            escape_path = ".." + "/outside.md"
-            value = manifest(
-                [route("x", sections=[{"path": escape_path, "heading": "## A"}])]
-            )
-            with self.assertRaisesRegex(ContextRoutingError, "SECTION_PATH_ESCAPE"):
-                validate_manifest(value, root)
-
-    def test_missing_section_file_is_rejected(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            value = manifest(
-                [route("x", sections=[{"path": "missing.md", "heading": "## A"}])]
-            )
-            with self.assertRaisesRegex(ContextRoutingError, "SECTION_FILE_MISSING"):
-                validate_manifest(value, root)
-
-    def test_missing_heading_is_rejected(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            (root / "doc.md").write_text("## B\nbody\n", encoding="utf-8")
-            value = manifest(
-                [route("x", sections=[{"path": "doc.md", "heading": "## A"}])]
-            )
-            with self.assertRaisesRegex(ContextRoutingError, "SECTION_HEADING_MISSING"):
-                validate_manifest(value, root)
-
-    def test_ambiguous_heading_is_rejected(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            (root / "doc.md").write_text("## A\none\n## A\ntwo\n", encoding="utf-8")
-            value = manifest(
-                [route("x", sections=[{"path": "doc.md", "heading": "## A"}])]
-            )
-            with self.assertRaisesRegex(
-                ContextRoutingError, "SECTION_HEADING_AMBIGUOUS"
+    def test_old_routing_fields_are_rejected(self):
+        for field in ("priority", "inherits", "inhibits"):
+            with (
+                self.subTest(field=field),
+                self.assertRaisesRegex(ContextRoutingError, "ROUTE_FIELD_UNKNOWN"),
             ):
-                validate_manifest(value, root)
+                validate_manifest(manifest([route("x", **{field: []})]), Path.cwd())
 
-    def test_valid_minimal_manifest_passes(self):
-        validate_manifest(manifest([]), Path.cwd())
+    def test_route_include_must_reference_policy(self):
+        value = manifest([route("x", include=["missing.policy"])])
+        with self.assertRaisesRegex(ContextRoutingError, "POLICY_INCLUDE_MISSING"):
+            validate_manifest(value, Path.cwd())
+
+    def test_policy_is_sections_only(self):
+        value = manifest(policies={"verify": {"sections": [], "inherits": ["x"]}})
+        with self.assertRaisesRegex(ContextRoutingError, "POLICY_FIELD_UNKNOWN"):
+            validate_manifest(value, Path.cwd())
 
 
-class ContextRouterSelectionTest(unittest.TestCase):
-    def test_match_keys_are_and_and_values_are_or(self):
+class SimplifiedSelectionTest(unittest.TestCase):
+    def test_exact_labels_select_one_route(self):
         value = manifest(
             [
                 route(
-                    "a",
-                    priority=10,
+                    "shell.edit",
                     match={
-                        "surface": ["workspace_shell"],
-                        "operation": ["structured_edit", "generated_file"],
+                        "surface": "workspace_shell",
+                        "operation": "structured_edit",
                     },
                 ),
-                route("b", priority=5, match={"surface": ["workspace_shell"]}),
+                route("github.read", match={"domain": "github", "operation": "read"}),
             ]
         )
         self.assertEqual(
             select_route(
                 value, {"surface": "workspace_shell", "operation": "structured_edit"}
             ),
-            "a",
+            "shell.edit",
         )
 
-    def test_absent_label_does_not_match(self):
+    def test_missing_label_is_not_a_match(self):
         value = manifest(
-            [route("a", priority=10, match={"operation": ["structured_edit"]})]
+            [
+                route(
+                    "shell.edit",
+                    match={
+                        "surface": "workspace_shell",
+                        "operation": "structured_edit",
+                    },
+                )
+            ]
         )
         self.assertIsNone(select_route(value, {"surface": "workspace_shell"}))
 
-    def test_fallback_is_not_a_normal_candidate(self):
-        self.assertIsNone(select_route(manifest([]), {}))
-
-    def test_inhibited_matching_route_is_removed(self):
+    def test_two_exact_matches_are_ambiguous_without_priority(self):
         value = manifest(
             [
+                route("broad", match={"surface": "workspace_shell"}),
                 route(
-                    "unsafe",
-                    priority=100,
-                    match={"domain": ["github"], "operation": ["mutation"]},
+                    "specific",
+                    match={
+                        "surface": "workspace_shell",
+                        "operation": "structured_edit",
+                    },
                 ),
-                route(
-                    "governed",
-                    priority=50,
-                    match={"domain": ["github"], "operation": ["mutation"]},
-                    inhibits=["unsafe"],
-                ),
-            ]
-        )
-        self.assertEqual(
-            select_route(value, {"domain": "github", "operation": "mutation"}),
-            "governed",
-        )
-
-    def test_equal_priority_survivors_fail(self):
-        value = manifest(
-            [
-                route("a", priority=10, match={"surface": ["workspace_shell"]}),
-                route("b", priority=10, match={"surface": ["workspace_shell"]}),
             ]
         )
         with self.assertRaisesRegex(ContextRoutingError, "ROUTE_AMBIGUOUS"):
-            select_route(value, {"surface": "workspace_shell"})
-
-    def test_inheritance_chain_is_root_to_leaf_and_deduplicated(self):
-        value = manifest(
-            [
-                route("root"),
-                route("shared", inherits=["root"]),
-                route("left", inherits=["shared"]),
-                route("right", inherits=["root"]),
-                route("winner", inherits=["left", "right"]),
-            ]
-        )
-        self.assertEqual(
-            resolve_route_chain(value, "winner"),
-            ["root", "shared", "left", "right", "winner"],
-        )
+            select_route(
+                value, {"surface": "workspace_shell", "operation": "structured_edit"}
+            )
 
 
-class ContextRouterCompileTest(unittest.TestCase):
-    def test_extract_section_includes_children_and_stops_at_peer(self):
+class SimplifiedCompileTest(unittest.TestCase):
+    def test_policy_sections_precede_route_sections_and_deduplicate(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             (root / "doc.md").write_text(
-                "# Root\nintro\n\n## A\nalpha\n\n### A child\nchild\n\n## B\nbeta\n",
-                encoding="utf-8",
+                "## Verify\ncheck\n## Shell\nedit\n", encoding="utf-8"
             )
-            section = extract_section(root, {"path": "doc.md", "heading": "## A"})
-            self.assertEqual(section["path"], "doc.md")
-            self.assertEqual(section["heading"], "## A")
-            self.assertIn("### A child\nchild", section["content"])
-            self.assertNotIn("## B", section["content"])
-
-    def test_extract_section_preserves_utf8(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            (root / "doc.md").write_text("## Чай\nпривет ☕\n", encoding="utf-8")
-            section = extract_section(root, {"path": "doc.md", "heading": "## Чай"})
-            self.assertIn("привет ☕", section["content"])
-
-    def test_extract_section_rejects_missing_heading(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            (root / "doc.md").write_text("## B\nbeta\n", encoding="utf-8")
-            with self.assertRaisesRegex(ContextRoutingError, "SECTION_HEADING_MISSING"):
-                extract_section(root, {"path": "doc.md", "heading": "## A"})
-
-    def test_extract_section_rejects_ambiguous_heading(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            (root / "doc.md").write_text("## A\none\n## A\ntwo\n", encoding="utf-8")
-            with self.assertRaisesRegex(
-                ContextRoutingError, "SECTION_HEADING_AMBIGUOUS"
-            ):
-                extract_section(root, {"path": "doc.md", "heading": "## A"})
-
-    def test_compile_context_emits_matched_packet(self):
-        with tempfile.TemporaryDirectory() as td:
-            root = Path(td)
-            (root / "doc.md").write_text("## A\nalpha\n", encoding="utf-8")
+            verify = section(heading="## Verify")
             value = manifest(
-                [
+                routes=[
                     route(
-                        "workspace-shell.structured-edit",
-                        priority=10,
+                        "shell.edit",
                         match={
-                            "surface": ["workspace_shell"],
-                            "operation": ["structured_edit"],
+                            "surface": "workspace_shell",
+                            "operation": "structured_edit",
                         },
-                        sections=[{"path": "doc.md", "heading": "## A"}],
+                        include=["verification"],
+                        sections=[verify, section(heading="## Shell")],
                     )
-                ]
+                ],
+                policies={"verification": {"sections": [verify]}},
             )
             packet = compile_context(
                 value,
-                {"operation": "structured_edit", "surface": "workspace_shell"},
+                {"surface": "workspace_shell", "operation": "structured_edit"},
                 root,
             )
-            self.assertEqual(packet["schema_version"], "cookbook-context-v0.1")
-            self.assertEqual(packet["route_state"], "MATCHED")
-            self.assertEqual(packet["route_id"], "workspace-shell.structured-edit")
             self.assertEqual(
-                packet["labels"],
-                {"operation": "structured_edit", "surface": "workspace_shell"},
-            )
-            self.assertEqual(
-                [(s["path"], s["heading"]) for s in packet["sections"]],
-                [("doc.md", "## A")],
+                [s["heading"] for s in packet["sections"]], ["## Verify", "## Shell"]
             )
 
-    def test_compile_context_emits_unknown_packet(self):
-        packet = compile_context(manifest([]), {"domain": "unclassified"}, Path.cwd())
-        self.assertEqual(
-            packet,
-            {
-                "schema_version": "cookbook-context-v0.1",
-                "route_state": "UNKNOWN",
-                "route_id": "default.unknown",
-                "labels": {"domain": "unclassified"},
-                "sections": [],
-            },
-        )
+    def test_compile_validates_unselected_stale_reference(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "doc.md").write_text("## Good\nok\n", encoding="utf-8")
+            value = manifest(
+                [
+                    route(
+                        "good",
+                        match={"kind": "good"},
+                        sections=[section(heading="## Good")],
+                    ),
+                    route(
+                        "stale",
+                        match={"kind": "stale"},
+                        sections=[section(heading="## Missing")],
+                    ),
+                ]
+            )
+            with self.assertRaisesRegex(ContextRoutingError, "SECTION_HEADING_MISSING"):
+                compile_context(value, {"kind": "good"}, root)
 
-    def test_compile_context_rejects_budget_overflow_before_partial_packet(self):
+    def test_budget_applies_after_policy_expansion(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             (root / "doc.md").write_text("## A\na\n## B\nb\n", encoding="utf-8")
             value = manifest(
-                [
-                    route("parent", sections=[{"path": "doc.md", "heading": "## A"}]),
+                routes=[
                     route(
-                        "winner",
-                        priority=10,
-                        match={"surface": ["workspace_shell"]},
-                        inherits=["parent"],
-                        sections=[{"path": "doc.md", "heading": "## B"}],
-                    ),
-                ]
+                        "x",
+                        match={"kind": "x"},
+                        include=["base"],
+                        sections=[section(heading="## B")],
+                    )
+                ],
+                policies={"base": {"sections": [section(heading="## A")]}},
+                max_sections=1,
             )
-            value["defaults"]["max_sections"] = 1
             with self.assertRaisesRegex(ContextRoutingError, "CONTEXT_BUDGET_EXCEEDED"):
-                compile_context(value, {"surface": "workspace_shell"}, root)
+                compile_context(value, {"kind": "x"}, root)
 
+    def test_unknown_is_only_for_zero_matching_routes(self):
+        packet = compile_context(manifest(), {"kind": "none"}, Path.cwd())
+        self.assertEqual(packet["route_state"], "UNKNOWN")
+        self.assertEqual(packet["route_id"], "default.unknown")
+        self.assertEqual(packet["sections"], [])
+
+
+class MarkdownFenceTest(unittest.TestCase):
+    def test_fenced_code_heading_does_not_truncate_section(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "doc.md").write_text(
+                "## Shell\nintro\n```bash\n# bounded commands here\necho ok\n```\nafter fence\n## Next\nnext\n",
+                encoding="utf-8",
+            )
+            result = extract_section(root, section(heading="## Shell"))
+            self.assertIn("# bounded commands here", result["content"])
+            self.assertIn("after fence", result["content"])
+            self.assertNotIn("## Next", result["content"])
+
+    def test_heading_like_text_inside_fence_does_not_make_reference_ambiguous(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "doc.md").write_text(
+                "## A\nreal\n```markdown\n## A\nnot a heading\n```\n",
+                encoding="utf-8",
+            )
+            value = manifest([route("x", match={"kind": "x"}, sections=[section()])])
+            validate_manifest(value, root)
+
+
+class PreservedSafetyTest(unittest.TestCase):
+    def test_load_manifest_rejects_non_object(self):
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "routes.json"
+            path.write_text("[]", encoding="utf-8")
+            with self.assertRaisesRegex(ContextRoutingError, "MANIFEST_INVALID"):
+                load_manifest(path)
+
+    def test_schema_version_and_duplicate_route_id_fail(self):
+        bad = manifest()
+        bad["schema_version"] = "wrong"
+        with self.assertRaisesRegex(ContextRoutingError, "SCHEMA_VERSION_INVALID"):
+            validate_manifest(bad, Path.cwd())
+        with self.assertRaisesRegex(ContextRoutingError, "ROUTE_ID_DUPLICATE"):
+            validate_manifest(
+                manifest([route("x"), route("x", match={"kind": "other"})]), Path.cwd()
+            )
+
+    def test_invalid_label_key_fails(self):
+        with self.assertRaisesRegex(ContextRoutingError, "LABEL_KEY_INVALID"):
+            validate_manifest(
+                manifest([route("x", match={"Bad Key": "x"})]), Path.cwd()
+            )
+
+    def test_section_path_escape_and_missing_file_fail(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "repo"
+            root.mkdir()
+            outside = Path(td) / "outside.md"
+            outside.write_text("## A\nbody\n", encoding="utf-8")
+            escape = ".." + "/outside.md"
+            with self.assertRaisesRegex(ContextRoutingError, "SECTION_PATH_ESCAPE"):
+                validate_manifest(
+                    manifest([route("x", sections=[section(escape)])]), root
+                )
+            with self.assertRaisesRegex(ContextRoutingError, "SECTION_FILE_MISSING"):
+                validate_manifest(
+                    manifest([route("x", sections=[section("missing.md")])]), root
+                )
+
+    def test_duplicate_missing_and_ambiguous_headings_fail(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "unique.md").write_text("## A\none\n", encoding="utf-8")
+            duplicate = section(path="unique.md")
+            with self.assertRaisesRegex(ContextRoutingError, "SECTION_DUPLICATE"):
+                validate_manifest(
+                    manifest([route("x", sections=[duplicate, dict(duplicate)])]), root
+                )
+            with self.assertRaisesRegex(ContextRoutingError, "SECTION_HEADING_MISSING"):
+                validate_manifest(
+                    manifest(
+                        [
+                            route(
+                                "x",
+                                sections=[
+                                    section(path="unique.md", heading="## Missing")
+                                ],
+                            )
+                        ]
+                    ),
+                    root,
+                )
+            (root / "doc.md").write_text("## A\none\n## A\ntwo\n", encoding="utf-8")
+            with self.assertRaisesRegex(
+                ContextRoutingError, "SECTION_HEADING_AMBIGUOUS"
+            ):
+                validate_manifest(manifest([route("x", sections=[section()])]), root)
+
+
+class SimplifiedFixtureTest(unittest.TestCase):
     def test_fixture_cases(self):
-        fixture_path = Path("tests/fixtures/context-routing-v0.1.json")
-        fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+        fixture = json.loads(
+            Path("tests/fixtures/context-routing-v0.1.json").read_text(encoding="utf-8")
+        )
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             for path, content in fixture["documents"].items():
@@ -342,7 +323,7 @@ class ContextRouterCompileTest(unittest.TestCase):
                 )
                 self.assertEqual(packet["route_id"], case["route_id"], case["name"])
                 self.assertEqual(
-                    [s["heading"] for s in packet["sections"]],
+                    [item["heading"] for item in packet["sections"]],
                     case["headings"],
                     case["name"],
                 )

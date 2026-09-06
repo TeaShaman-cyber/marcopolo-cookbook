@@ -4,14 +4,6 @@
     "max_sections": 4,
     "fallback_route": "default.unknown"
   },
-  "routes": [
-    {
-      "id": "default.unknown",
-      "priority": -1000,
-      "match": {},
-      "inherits": [],
-      "inhibits": [],
-      "sections": []
-    }
-  ]
+  "policies": {},
+  "routes": []
 }
