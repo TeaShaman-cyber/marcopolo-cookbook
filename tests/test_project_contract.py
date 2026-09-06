@@ -37,6 +37,10 @@ class ProjectContractSourceTest(unittest.TestCase):
         self.assertIn("Workspace RULES govern MarcoPolo runtime mechanics after route selection", text)
         self.assertIn("BLOCK or remain UNKNOWN", text)
 
+    def test_project_contract_fits_project_settings_limit(self):
+        text = CONTRACT.read_text(encoding="utf-8")
+        self.assertLessEqual(len(text), 8000, f"project contract is {len(text)} chars")
+
     def test_project_contract_stays_above_runtime_mechanics(self):
         text = CONTRACT.read_text(encoding="utf-8")
 
