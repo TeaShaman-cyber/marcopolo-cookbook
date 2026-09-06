@@ -1,0 +1,17 @@
+{
+  "schema_version": "cookbook-routing-v0.1",
+  "defaults": {
+    "max_sections": 4,
+    "fallback_route": "default.unknown"
+  },
+  "routes": [
+    {
+      "id": "default.unknown",
+      "priority": -1000,
+      "match": {},
+      "inherits": [],
+      "inhibits": [],
+      "sections": []
+    }
+  ]
+}
