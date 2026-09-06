@@ -62,17 +62,35 @@ When GitHub work is performed through MarcoPolo, use the workspace GitHub
 profiles rather than guessing from whichever client connector happens to be
 available.
 
-For reads:
+For reads through MarcoPolo:
 
 ```bash
 GH_CONFIG_DIR=/workspace/.config/gh gh ...
 ```
 
-For explicitly authorized writes:
+The native ChatGPT GitHub plugin is also an allowed lightweight read route for
+bounded current-state inspection when only the answer or check is needed and no
+durable copy, bulk extraction, or workspace-local processing is required. A
+plugin read is evidence for the state returned by that route; it does not create
+write authority or workspace persistence.
+
+For explicitly authorized writes through MarcoPolo:
 
 ```bash
 GH_CONFIG_DIR=/workspace/.config/gh-write gh ...
 ```
+
+MarcoPolo remains the default GitHub write route when it is suitable. The native
+ChatGPT GitHub plugin may be used as an explicit write fallback when MarcoPolo is
+materially obstructed by transport, quoting, or request-filter mechanics, or
+when working around those mechanics would add avoidable mutation risk or
+complexity. Native-plugin write capability is not permission and must not become
+the default merely because it is available.
+
+Before a native-plugin fallback write, current user intent must already authorize
+the mutation. Make the route change visible, perform the smallest sufficient
+mutation, and verify the exact remote postcondition through an independently
+available read when practical.
 
 Git-backed writes may use `git` under the same `gh-write` environment. After
 any mutation, verify the exact remote postcondition. Do not infer write
