@@ -41,14 +41,25 @@ def _route_map(manifest: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
         result[route_id] = route
     return result
 
+
 def _validate_route_shape(route: Mapping[str, Any]) -> None:
     _require(isinstance(route.get("priority"), int), "ROUTE_PRIORITY_INVALID")
     match = route.get("match")
     _require(isinstance(match, Mapping), "MATCH_INVALID")
     for key, values in match.items():
-        _require(isinstance(key, str) and LABEL_KEY_RE.fullmatch(key) is not None, "LABEL_KEY_INVALID")
-        _require(isinstance(values, list) and all(isinstance(v, str) for v in values), "MATCH_VALUES_INVALID")
-    for field, code in (("inherits", "INHERITS_INVALID"), ("inhibits", "INHIBITS_INVALID"), ("sections", "SECTIONS_INVALID")):
+        _require(
+            isinstance(key, str) and LABEL_KEY_RE.fullmatch(key) is not None,
+            "LABEL_KEY_INVALID",
+        )
+        _require(
+            isinstance(values, list) and all(isinstance(v, str) for v in values),
+            "MATCH_VALUES_INVALID",
+        )
+    for field, code in (
+        ("inherits", "INHERITS_INVALID"),
+        ("inhibits", "INHIBITS_INVALID"),
+        ("sections", "SECTIONS_INVALID"),
+    ):
         _require(isinstance(route.get(field), list), code)
 
 
@@ -83,6 +94,7 @@ def _validate_inheritance_cycles(routes: Mapping[str, Mapping[str, Any]]) -> Non
     for route_id in routes:
         visit(route_id)
 
+
 def _validate_sections(route: Mapping[str, Any], repo_root: Path) -> None:
     root = repo_root.resolve()
     seen: set[tuple[str, str]] = set()
@@ -90,7 +102,9 @@ def _validate_sections(route: Mapping[str, Any], repo_root: Path) -> None:
         _require(isinstance(ref, Mapping), "SECTION_INVALID")
         path_value = ref.get("path")
         heading = ref.get("heading")
-        _require(isinstance(path_value, str) and bool(path_value), "SECTION_PATH_INVALID")
+        _require(
+            isinstance(path_value, str) and bool(path_value), "SECTION_PATH_INVALID"
+        )
         _require(isinstance(heading, str) and bool(heading), "SECTION_HEADING_INVALID")
         candidate = (root / path_value).resolve()
         if not candidate.is_relative_to(root):
@@ -101,7 +115,11 @@ def _validate_sections(route: Mapping[str, Any], repo_root: Path) -> None:
         if key in seen:
             raise ContextRoutingError("SECTION_DUPLICATE")
         seen.add(key)
-        count = sum(1 for line in candidate.read_text(encoding="utf-8").splitlines() if line == heading)
+        count = sum(
+            1
+            for line in candidate.read_text(encoding="utf-8").splitlines()
+            if line == heading
+        )
         if count == 0:
             raise ContextRoutingError("SECTION_HEADING_MISSING")
         if count > 1:
@@ -128,3 +146,65 @@ def validate_manifest(manifest: Mapping[str, Any], repo_root: Path) -> None:
     _validate_inheritance_cycles(routes)
     for route in routes.values():
         _validate_sections(route, repo_root)
+
+
+def _route_matches(route: Mapping[str, Any], labels: Mapping[str, str]) -> bool:
+    return all(
+        key in labels and labels[key] in allowed
+        for key, allowed in route["match"].items()
+    )
+
+
+def select_route(manifest: Mapping[str, Any], labels: Mapping[str, str]) -> str | None:
+    routes = _route_map(manifest)
+    fallback = manifest["defaults"]["fallback_route"]
+    matching = {
+        route_id
+        for route_id, route in routes.items()
+        if route_id != fallback and _route_matches(route, labels)
+    }
+    if not matching:
+        return None
+
+    inhibited: set[str] = set()
+    for route_id in matching:
+        inhibited.update(routes[route_id]["inhibits"])
+    survivors = matching.difference(inhibited)
+    if not survivors:
+        return None
+
+    best_priority = max(routes[route_id]["priority"] for route_id in survivors)
+    winners = sorted(
+        route_id
+        for route_id in survivors
+        if routes[route_id]["priority"] == best_priority
+    )
+    if len(winners) != 1:
+        raise ContextRoutingError("ROUTE_AMBIGUOUS")
+    return winners[0]
+
+
+def resolve_route_chain(manifest: Mapping[str, Any], route_id: str) -> list[str]:
+    routes = _route_map(manifest)
+    if route_id not in routes:
+        raise ContextRoutingError("ROUTE_ID_UNKNOWN")
+
+    result: list[str] = []
+    emitted: set[str] = set()
+    visiting: set[str] = set()
+
+    def visit(current: str) -> None:
+        if current in visiting:
+            raise ContextRoutingError("INHERITANCE_CYCLE")
+        if current in emitted:
+            return
+        visiting.add(current)
+        for parent in routes[current]["inherits"]:
+            visit(parent)
+        visiting.remove(current)
+        if current not in emitted:
+            result.append(current)
+            emitted.add(current)
+
+    visit(route_id)
+    return result
