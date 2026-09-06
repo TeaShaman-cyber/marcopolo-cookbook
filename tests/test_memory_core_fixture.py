@@ -104,6 +104,19 @@ class MemoryCoreFixtureTest(unittest.TestCase):
             self.assertFalse(expected["persisted"])
             self.assertFalse(expected["unauthorized_endpoint_metadata_exposed"])
 
+    def test_wrong_relation_scope_touching_authorized_endpoint_fails_closed(self):
+        cases = self.fixture["relation_integrity_cases"]
+        for name in (
+            "wrong_relation_scope_conflict",
+            "wrong_relation_scope_supersession",
+            "wrong_relation_scope_tombstone",
+        ):
+            expected = cases[name]["expected"]
+            self.assertEqual(expected["error"], "INTEGRITY_SCOPE_VIOLATION")
+            self.assertEqual(expected["detection_path"], "authorized_endpoint_integrity_probe")
+            self.assertFalse(expected["normal_packet_returned"])
+            self.assertFalse(expected["relation_metadata_exposed"])
+
     def test_corrupt_cross_scope_relation_fails_closed_on_recall(self):
         self.assertIn("relation_integrity_cases", self.fixture)
         expected = self.fixture["relation_integrity_cases"]["cross_scope_relation_detected"]["expected"]

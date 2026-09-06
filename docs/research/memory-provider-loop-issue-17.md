@@ -195,9 +195,17 @@ Relationship safety is scoped before persistence and before recall. For every co
 relation.scope == endpoint_1.scope == endpoint_2.scope == effective_scope
 ```
 
-The retention/admission boundary must resolve endpoint events inside the authorized `effective_scope` and reject any relation whose endpoint scope differs with `RELATION_SCOPE_MISMATCH` **before canonical durable write**. Relationship lookup during recall is likewise constrained to `relation.scope = effective_scope`; cross-scope relations are not an alternate channel for discovering another scope.
+The retention/admission boundary must resolve endpoint events inside the authorized `effective_scope` and reject any relation whose endpoint scope differs with `RELATION_SCOPE_MISMATCH` **before canonical durable write**. Normal relationship sidecar lookup is constrained to `relation.scope = effective_scope`; cross-scope relations are not an alternate channel for discovering another scope.
 
-If a legacy/corrupt row violates this invariant and is encountered during recall or reconciliation, return `INTEGRITY_SCOPE_VIOLATION` instead of a normal evidence packet. That failure **must not expose unauthorized endpoint IDs** or their provenance/payload metadata. Conflict completeness therefore means complete applicable safety state **within the authorized effective scope**, never cross-scope disclosure. The conformance fixture includes fail-closed conflict, supersession, and tombstone vectors for this rule.
+Before returning any normal recall packet, the backend must also run an **authorized endpoint integrity probe** using only the already-authorized page `event_id` values. This probe is **independent of relation.scope**: it inspects every stored relationship that references an authorized endpoint, regardless of the relationship's claimed scope label, and verifies:
+
+```text
+relation.scope == each endpoint event.scope == effective_scope
+```
+
+This is an internal integrity check, not a retrieval surface. If the probe detects a wrong relation scope, cross-scope endpoint, missing endpoint, or equivalent invariant violation, it returns only the **generic INTEGRITY_SCOPE_VIOLATION** failure. It **must not expose relation IDs**, unauthorized endpoint IDs, relation provenance, or unauthorized payload metadata. Only after this endpoint-driven integrity check passes may normal same-scope relationship sidecars be assembled.
+
+If a legacy/corrupt row violates this invariant and is encountered during recall or reconciliation, return `INTEGRITY_SCOPE_VIOLATION` instead of a normal evidence packet. That failure **must not expose unauthorized endpoint IDs** or their provenance/payload metadata. Conflict completeness therefore means complete applicable safety state **within the authorized effective scope**, never cross-scope disclosure. The conformance fixture includes fail-closed conflict, supersession, and tombstone vectors for both endpoint-scope mismatch and wrong `relation.scope` labels.
 
 A zero-item exact/filter result returns `MISS_UNKNOWN`, not proof of absence.
 

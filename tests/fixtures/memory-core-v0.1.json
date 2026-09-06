@@ -576,6 +576,84 @@
         "normal_packet_returned": false,
         "unauthorized_endpoint_metadata_exposed": false
       }
+    },
+    "wrong_relation_scope_conflict": {
+      "trusted_execution_context": {
+        "trusted_principal_id": "principal-alpha"
+      },
+      "effective_scope": "alpha",
+      "authorized_page_event_ids": [
+        "evt-001"
+      ],
+      "stored_relation": {
+        "relation_id": "corrupt-wrong-scope-conflict",
+        "scope": "beta",
+        "kind": "CONTRADICTS",
+        "left_event_id": "evt-001",
+        "right_event_id": "evt-005",
+        "endpoint_scopes": [
+          "alpha",
+          "alpha"
+        ]
+      },
+      "expected": {
+        "error": "INTEGRITY_SCOPE_VIOLATION",
+        "detection_path": "authorized_endpoint_integrity_probe",
+        "normal_packet_returned": false,
+        "relation_metadata_exposed": false
+      }
+    },
+    "wrong_relation_scope_supersession": {
+      "trusted_execution_context": {
+        "trusted_principal_id": "principal-alpha"
+      },
+      "effective_scope": "alpha",
+      "authorized_page_event_ids": [
+        "evt-001"
+      ],
+      "stored_relation": {
+        "relation_id": "corrupt-wrong-scope-supersession",
+        "scope": "beta",
+        "kind": "SUPERSEDES",
+        "superseded_event_id": "evt-001",
+        "superseding_event_id": "evt-006",
+        "endpoint_scopes": [
+          "alpha",
+          "alpha"
+        ]
+      },
+      "expected": {
+        "error": "INTEGRITY_SCOPE_VIOLATION",
+        "detection_path": "authorized_endpoint_integrity_probe",
+        "normal_packet_returned": false,
+        "relation_metadata_exposed": false
+      }
+    },
+    "wrong_relation_scope_tombstone": {
+      "trusted_execution_context": {
+        "trusted_principal_id": "principal-alpha"
+      },
+      "effective_scope": "alpha",
+      "authorized_page_event_ids": [
+        "evt-001"
+      ],
+      "stored_relation": {
+        "relation_id": "corrupt-wrong-scope-tombstone",
+        "scope": "beta",
+        "kind": "TOMBSTONES",
+        "target_event_id": "evt-001",
+        "tombstone_event_id": "evt-007",
+        "endpoint_scopes": [
+          "alpha",
+          "alpha"
+        ]
+      },
+      "expected": {
+        "error": "INTEGRITY_SCOPE_VIOLATION",
+        "detection_path": "authorized_endpoint_integrity_probe",
+        "normal_packet_returned": false,
+        "relation_metadata_exposed": false
+      }
     }
   }
 }
