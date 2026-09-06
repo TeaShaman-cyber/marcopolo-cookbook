@@ -1,0 +1,39 @@
+#!/bin/sh
+set -eu
+
+DEV_BIN=${THESEUS_DEV_BIN:-/workspace/.local/theseus-dev/bin}
+CACHE=${THESEUS_DEV_CACHE:-/tmp/theseus-dev-cache}
+PATH="$DEV_BIN:$PATH"
+export PATH
+export MICRO_CONFIG_HOME=${MICRO_CONFIG_HOME:-$CACHE/micro}
+mkdir -p "$MICRO_CONFIG_HOME"
+
+cat >"$MICRO_CONFIG_HOME/init.lua" <<'LUA'
+local linter = import("linter")
+
+function init()
+    linter.removeLinter("ruff")
+    linter.makeLinter(
+        "ruff", "python", "ruff",
+        {"check", "--select", "E9,F63,F7,F82", "--output-format=concise", "%f"},
+        "%f:%l:%c: %m"
+    )
+
+    linter.removeLinter("shellcheck")
+    linter.makeLinter(
+        "shellcheck", "shell", "shellcheck",
+        {"--severity=warning", "--exclude=SC1090,SC1007", "-f", "gcc", "%f"},
+        "%f:%l:%c:.+: %m"
+    )
+
+    -- Formatting remains an explicit pre-Codex gate, not an on-save diagnostic.
+    linter.removeLinter("shfmt")
+end
+LUA
+
+[ -x "$DEV_BIN/micro" ] || {
+	printf '%s\n' 'dev-edit: micro missing; run tools/dev/bootstrap.sh' >&2
+	exit 2
+}
+
+exec "$DEV_BIN/micro" "$@"

@@ -1,0 +1,102 @@
+#!/bin/sh
+set -eu
+
+ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
+	printf '%s\n' 'dev-check: not inside a Git worktree' >&2
+	exit 2
+}
+cd "$ROOT"
+
+DEV_BIN=${THESEUS_DEV_BIN:-/workspace/.local/theseus-dev/bin}
+CACHE=${THESEUS_DEV_CACHE:-/tmp/theseus-dev-cache}
+BASE_REF=${THESEUS_DEV_BASE_REF:-origin/main}
+MODE=changed
+BASE_COMMIT=
+PATH="$DEV_BIN:$PATH"
+export PATH
+export RUFF_CACHE_DIR="$CACHE/ruff"
+mkdir -p "$RUFF_CACHE_DIR"
+
+for tool in ruff shellcheck shfmt jq; do
+	command -v "$tool" >/dev/null 2>&1 || {
+		printf 'dev-check: missing %s; run tools/dev/bootstrap.sh\n' "$tool" >&2
+		exit 2
+	}
+done
+
+RAW=$(mktemp "$CACHE/files.raw.XXXXXX")
+FILES=$(mktemp "$CACHE/files.XXXXXX")
+trap 'rm -f "$RAW" "$FILES"' EXIT HUP INT TERM
+
+case ${1:-} in
+--all)
+	MODE=all
+	git ls-files >"$RAW"
+	;;
+'' | --changed)
+	if git rev-parse --verify "$BASE_REF" >/dev/null 2>&1; then
+		base=$(git merge-base HEAD "$BASE_REF")
+		BASE_COMMIT=$base
+		git diff --name-only --diff-filter=ACMR "$base"...HEAD >>"$RAW"
+	fi
+	git diff --name-only --diff-filter=ACMR >>"$RAW"
+	git diff --cached --name-only --diff-filter=ACMR >>"$RAW"
+	git ls-files --others --exclude-standard >>"$RAW"
+	;;
+*)
+	printf 'usage: %s [--changed|--all]\n' "$0" >&2
+	exit 2
+	;;
+esac
+
+sort -u "$RAW" | while IFS= read -r path; do
+	[ -f "$path" ] && printf '%s\n' "$path"
+done >"$FILES"
+
+check_shfmt() {
+	path=$1
+	if [ "$MODE" = changed ] && [ -n "$BASE_COMMIT" ] && git cat-file -e "$BASE_COMMIT:$path" 2>/dev/null; then
+		base_file=$(mktemp "$CACHE/shfmt-base.XXXXXX")
+		git show "$BASE_COMMIT:$path" >"$base_file"
+		if ! shfmt -d -ln=auto "$base_file" >/dev/null 2>&1; then
+			rm -f "$base_file"
+			printf 'shfmt: legacy shfmt debt skipped for %s\n' "$path"
+			return 0
+		fi
+		rm -f "$base_file"
+	fi
+	shfmt -d -ln=auto "$path"
+}
+
+printf '%s\n' '== static checks =='
+while IFS= read -r path; do
+	case $path in
+	*.py)
+		ruff check --select E9,F63,F7,F82 "$path"
+		ruff format --check "$path"
+		python3 -m py_compile "$path"
+		;;
+	*.sh)
+		shellcheck --severity=warning --exclude=SC1090,SC1007 "$path"
+		check_shfmt "$path"
+		;;
+	*.json)
+		jq empty "$path" >/dev/null
+		;;
+	esac
+done <"$FILES"
+
+printf '%s\n' '== whitespace =='
+if git rev-parse --verify "$BASE_REF" >/dev/null 2>&1; then
+	base=$(git merge-base HEAD "$BASE_REF")
+	git diff --check "$base"...HEAD
+fi
+git diff --check
+git diff --cached --check
+
+printf '%s\n' '== repository tests =='
+python3 -m unittest discover -s tests -p 'test_*.py'
+tests/python-bootstrap.sh
+tests/wiki-push.sh
+
+printf '%s\n' 'DEV_CHECK_PASS'
