@@ -6,6 +6,7 @@ TARGET="${1:-/workspace/RULES.md}"
 TMP="${TARGET}.tmp.$$"
 trap 'rm -f "$TMP"' EXIT
 cp "$SOURCE" "$TMP"
-install -m 0644 "$TMP" "$TARGET"
+chmod 0644 "$TMP"
+mv -f "$TMP" "$TARGET"
 cmp -s "$SOURCE" "$TARGET"
 sha256sum "$SOURCE" "$TARGET"
