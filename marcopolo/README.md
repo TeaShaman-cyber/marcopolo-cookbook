@@ -9,7 +9,7 @@ The goal is to identify **which layer actually failed**, use the smallest safe w
 1. **Assume `workspace_shell` may execute through `/bin/sh`, not Bash.** If Bash syntax matters, invoke `bash -lc` explicitly.
 2. **A MarcoPolo timeout or `502` is an observation/control-plane failure, not proof that the target job failed.** Re-read the target system separately.
 3. **Conversation runtime, MarcoPolo workspace, and GitHub Actions runner are different environments.** Never infer path or package availability across them.
-4. **GitHub read and write paths can have different authority.** Native GitHub readback may work while writes fail; governed `gh-write` in MarcoPolo is the established write fallback.
+4. **GitHub read and write paths can have different authority.** Native ChatGPT GitHub reads are an allowed lightweight current-state route; governed `gh-write` is the normal MarcoPolo write route. Native plugin writes are explicit fallbacks only when MarcoPolo transport, quoting, or request-filter mechanics make the already-authorized mutation less safe or needlessly complex.
 5. **Never infer experiment identity from `GITHUB_SHA` after a launcher checks out another commit.** Pass experiment and launcher identities explicitly.
 6. **Do not trust a successful mutation until exact remote readback.** A stale API response or incomplete Git tree can otherwise make a successful-looking write wrong.
 7. **Do not assume `mcporter`, Node modules, Python packages, or prior virtualenvs persist.** Pin dependencies and record runtime versions in receipts.
@@ -227,15 +227,25 @@ The governed MarcoPolo credential could still perform specific writes.
 
 ```text
 READ
-  native ChatGPT GitHub connector
+  MarcoPolo gh for workspace-local, bulk, or processing-heavy inspection
+  native ChatGPT GitHub plugin for bounded current-state checks
 
 WRITE
-  MarcoPolo governed gh-write
-  GH_CONFIG_DIR=/workspace/.config/gh-write
+  default: MarcoPolo governed gh-write
+           GH_CONFIG_DIR=/workspace/.config/gh-write
+  fallback: native ChatGPT GitHub plugin only when MarcoPolo transport,
+            quoting, or request filtering makes the authorized mutation
+            less safe or needlessly complex
 
 READBACK
-  native ChatGPT GitHub connector
+  use an independently available route when practical
+  prefer a route independent of the writer
 ```
+
+Native plugin capability is not permission. Before any fallback write, current
+user intent must already authorize the mutation. Make the route change visible,
+perform the smallest sufficient mutation, and verify the exact remote
+postcondition.
 
 The native read path can itself become unavailable mid-session even after successful reauthorization. Classify that separately:
 
@@ -290,7 +300,24 @@ If the `(target_type, operation)` tuple does not match the tool primitive, stop 
 
 Smart-HTTP `git push` from MarcoPolo began returning HTTP `403`, even though issue comments and GitHub API mutations through governed `gh-write` still worked.
 
-### Fallback used successfully
+A smart-HTTP `403` does not by itself authorize another mutation route. First
+classify the failure:
+
+```text
+semantic / policy / state rejection
+  -> STOP
+
+auth / transport / quoting / request-filter obstruction
+  -> fallback may be considered only if current user intent already authorizes
+     the same mutation
+```
+
+Choose the thinnest allowed fallback. A typed native GitHub plugin mutation can
+be preferable when it avoids shell transport risk; the governed Git Database API
+remains a lower-level option when exact Git object construction is actually
+required.
+
+### Historical Git Database fallback used successfully
 
 ```text
 blob(s)
