@@ -34,3 +34,26 @@ A search miss means `UNKNOWN`, not proof of absence, especially for a
 If Session Search is unavailable or its corpus verification fails, state that
 explicitly. Do not silently present remembered, reconstructed, or other
 retrieved context as if it came from Session Search.
+
+## GitHub operational route
+
+When GitHub work is performed through MarcoPolo, use the workspace GitHub
+profiles rather than guessing from whichever client connector happens to be
+available.
+
+For reads:
+
+```bash
+GH_CONFIG_DIR=/workspace/.config/gh gh ...
+```
+
+For explicitly authorized writes:
+
+```bash
+GH_CONFIG_DIR=/workspace/.config/gh-write gh ...
+```
+
+Git-backed writes may use `git` under the same `gh-write` environment. After
+any mutation, verify the exact remote postcondition. Do not infer write
+capability from read authentication, and do not silently substitute a different
+GitHub route after an authentication failure without reporting the route change.
