@@ -32,6 +32,15 @@ class MemoryProviderLoopContractTest(unittest.TestCase):
         self.assertIn("CROSS_CLIENT_PERSISTENCE", self.text)
         self.assertIn("UNKNOWN", self.text)
 
+    def test_scope_is_authorized_from_trusted_execution_context(self):
+        for marker in (
+            "trusted_principal_id",
+            "allowed_scopes",
+            "AUTHZ_SCOPE_DENIED",
+            "before any backend query",
+        ):
+            self.assertIn(marker, self.text)
+
     def test_managed_postgres_is_first_class_backend_lane(self):
         for marker in (
             "Managed PostgreSQL",

@@ -130,10 +130,24 @@ Normative lifecycle vocabulary:
 OBSERVED | CANDIDATE | PENDING | SUPERSEDED | TOMBSTONED
 ```
 
-Normative exact/filter recall request for `memory-core-v0.1`:
+Authorization precedes portable recall semantics. The model/request may name a requested `scope`, but that string is **not** an authorization credential. The adapter receives a `trusted_execution_context` from the harness/wrapper boundary; it must contain or resolve a `trusted_principal_id` that the model cannot forge. Policy maps that principal to `allowed_scopes`.
 
 ```text
-scope                  required exact string
+trusted_execution_context
+  -> trusted_principal_id
+  -> policy lookup
+  -> allowed_scopes
+  -> validate requested scope
+  -> effective_scope
+  -> backend query/write only after authorization
+```
+
+If the requested scope is not allowed, return `AUTHZ_SCOPE_DENIED` **before any backend query** or durable write. A missing/untrusted principal fails closed. Backend adapters receive only an authorized `effective_scope`; they must not infer authority from caller-controlled text. The shared fixture defines `memory-authz-v0.1` principals and both allowed and denied cases.
+
+Normative exact/filter recall request for `memory-core-v0.1` after authorization:
+
+```text
+scope                  required exact requested scope; validated into effective_scope
 filters.event_id       optional exact string
 filters.operation_id   optional exact string
 filters.source_class   optional exact string
@@ -164,7 +178,7 @@ The normalized `evidence_packet` contains:
 
 ```text
 core_schema_version
-scope
+scope = authorized effective_scope
 items[]
 conflicts[]
 supersession[]
@@ -173,9 +187,11 @@ next_cursor | null
 result_state = HIT | MISS_UNKNOWN | CONFLICT
 ```
 
-Each item must expose stable `event_id`, `operation_id` when present, `source_class`, `lifecycle_state`, `created_at`, provenance, and canonical payload reference/content according to the fixture. Conflict, supersession, and tombstone state must come from the same decision snapshot as the items.
+Each item must expose stable `event_id`, `operation_id` when present, `source_class`, `lifecycle_state`, `created_at`, explicit provenance, and canonical payload reference/content according to the fixture. Relationship entries also carry stable relation IDs and provenance. Conflict, supersession, and tombstone state must come from the **same decision snapshot** as the items and are not clipped merely because the related event falls outside the page `limit`. In particular, a returned item with an applicable contradiction outside the normal page cutoff must surface that relation in `conflicts[]`.
 
-A backend passes **fixture-exact conformance** only when the shared fixture corpus and request vectors in `tests/fixtures/memory-core-v0.1.json` produce the same normalized packet, ordering, lifecycle interpretation, and pagination boundaries. The executable fixture test is `tests/test_memory_core_fixture.py`. Backend-specific diagnostics may be emitted separately but are excluded from the normalized packet.
+A zero-item exact/filter result returns `MISS_UNKNOWN`, not proof of absence.
+
+A backend passes **fixture-exact conformance** only when the shared fixture corpus and request vectors in `tests/fixtures/memory-core-v0.1.json` produce the same full normalized packet, including provenance, safety-state relationships, ordering, lifecycle interpretation, `MISS_UNKNOWN`, and pagination boundaries. The executable fixture test is `tests/test_memory_core_fixture.py`. Backend-specific diagnostics may be emitted separately but are excluded from the normalized packet.
 
 Ranked FTS, Holographic `probe` / `related` / `reason`, semantic similarity, and other richer retrieval are optional capabilities above the Core conformance lane. Backend replacement is not considered meaningful if the deterministic lane changes its semantics.
 
@@ -206,7 +222,7 @@ model proposal
 
 In other words, secret or credential material must be rejected **before canonical durable write**. A later tombstone can invalidate ordinary semantic content, but it is not an acceptable erasure mechanism for a secret that was already durably appended.
 
-The acceptance suite must include a synthetic **secret canary**, adversarial content, and a cross-scope event. Expected behavior is rejection before persistence and no recall from an unauthorized scope.
+The acceptance suite must include a synthetic **secret canary**, adversarial content, and a cross-scope event. Cross-scope denial is evaluated against the trusted principal policy, not against model-provided labels. Expected behavior is `AUTHZ_SCOPE_DENIED` before persistence/query and no recall from an unauthorized scope.
 
 ## Authority boundary
 
