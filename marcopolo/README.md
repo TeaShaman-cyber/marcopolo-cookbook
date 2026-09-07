@@ -16,6 +16,32 @@ The goal is to identify **which layer actually failed**, use the smallest safe w
 8. **Search miss != absence; registry metadata != live capability; workflow success != verified evidence.** Preserve raw observations and derived conclusions separately.
 9. **Connector downloads should land in `/workspace/data/downloads/`.** The `/workspace` root may reject connector writes even when the download path itself is healthy.
 
+### Execution-language routing
+
+Prefer the thinnest execution language that matches the payload:
+
+| Route | Use for | Avoid |
+|---|---|---|
+| **Direct binary / CLI** | one bounded operation such as `git status`, `gh ...`, `connection test`, `sha256sum` | wrapping a single command in another language without need |
+| **POSIX sh** | short control flow and command composition | Bash-only syntax, large structured payloads, nested quoting |
+| **Python** | JSON, multiline content, deterministic file generation, bounded transformations, hashing | replacing a simpler one-command CLI |
+| **Bash only when Bash semantics are required** | arrays, `[[ ... ]]`, `pipefail`, brace expansion, Bash regex | using `bash -lc` as a default wrapper |
+| **Exact payload transport** | quoting-sensitive or exact-byte content crossing the tool boundary | treating base64 as encryption or authorization |
+
+Default mental model:
+
+```text
+Direct binary / CLI
+        ↓ when control flow is needed
+POSIX sh
+        ↓ when structured payload logic is needed
+Python
+
+Bash only when Bash semantics are required.
+```
+
+For lightweight pre-review validation in this cookbook, use `tools/dev/check`. It keeps Ruff/Micro cache churn under `/tmp`, checks only changed files by default, and leaves Codex review for architectural and semantic issues rather than mechanical syntax/style mistakes.
+
 ---
 
 ## Runtime map: three environments that are easy to accidentally merge

@@ -27,6 +27,7 @@ A path, dependency, or artifact observed in one runtime is not assumed to exist 
 - [mcporter workbench](mcporter/README.md) — bounded MCP client setup, inventory, probes, and acceptance checks.
 - [MCPJam CLI workbench](mcpjam-cli/README.md) — independent MCP transport/protocol diagnostics, probes, and Agent Skills inspection.
 - [Search helpers](search/README.md) — lightweight search tooling used in the workspace.
+- [Lightweight development gate](tools/dev/README.md) — pinned standalone editor/linters with NFS-light caches and changed-file pre-Codex checks.
 - [Jester forum notes](jester-forum/README.md) — bounded forum workflow notes.
 
 Additional top-level scripts provide GitHub/wiki wrappers and access checks used by the workspace.
