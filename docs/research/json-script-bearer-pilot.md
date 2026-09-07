@@ -1,214 +1,432 @@
-# Pilot design: JSON connector -> Script -> Bearer -> mcporter
+# Pilot design v2: JSON managed secret -> ephemeral env -> mcporter
 
 Related: #13
 
 Status: **design / consultation only**. No production secret and no real provider are in scope.
 
-## Research question
+## 1. Research question
 
-Can MarcoPolo's existing `json` connection credential boundary be reused to hand a synthetic secret to a Script-side processor via HTTP Basic, then pass the same bytes to `mcporter` as an HTTP Bearer token **without materializing the secret in `/workspace`, DuckDB, stdout/stderr, argv, or persistent config**?
+Can MarcoPolo's existing `json` connection credential boundary act as an **out-of-workspace secret source** for one bounded Script capability, with the secret projected only into a child-process environment and then consumed by `mcporter` through a symbolic environment reference?
 
-This pilot tests the transport primitive only. It does not build a general keychain, proxy, vault, or provider integration.
+The pilot tests this primitive:
 
-## Already observed
+```text
+MarcoPolo managed JSON secret
+        -> HTTP Basic transport
+        -> Script receives password in RAM
+        -> child-only environment variable
+        -> mcporter symbolic header reference
+        -> HTTP Bearer on the wire
+```
 
-The preceding #13 research established these facts with synthetic values:
+It does **not** build a vault, keychain service, generic Basic-to-Bearer proxy, persistent broker, or provider integration.
 
-1. A MarcoPolo `json` connection can store a Basic-auth password in its managed secret field and inject it into an HTTP request.
-2. A `.json` query file with a `url` field is a working query contract for this connection.
-3. JSON query output can be processed later by Script Connection, but that output-mediated path is **not acceptable for real secrets** because reflected credentials can enter result/DuckDB state.
-4. Script Connection can execute a bounded workspace wrapper with shell mode off.
-5. `mcporter config add --header` supports environment-variable expansion such as `${VAR}` / `$env:VAR`.
+## 2. What changed from v1
 
-The pilot therefore must deliver the synthetic value to Script through a request boundary, not through a connector result row.
+The first design described the Script component as a Basic-to-Bearer bridge. That is more responsibility than the evidence requires.
 
-## Feynman / Five-Whys guard
+The tighter abstraction is:
 
-The pilot deliberately starts from the smallest mechanism that can falsify the idea.
+```text
+managed secret -> ephemeral env adapter
+```
+
+Bearer construction belongs to the consumer configuration, not to the adapter.
+
+This is informed by Hermes Agent's MCP configuration pattern: Hermes allows environment references such as `${VAR}` / `${env:VAR}` in MCP string fields, including HTTP headers, and its tests exercise `Authorization: Bearer ${MCP_GH_API_KEY}` expanding from environment state. Hermes is a **reference pattern, not a dependency** and not evidence that MarcoPolo shares Hermes's secret-scope implementation.
+
+Reference snapshot used for the design:
+
+- repository: `NousResearch/hermes-agent`
+- commit: `233757037df1f03f9fe1cfddc097acd5ad7f7510`
+- `website/docs/reference/mcp-config-reference.md`: HTTP `headers` plus `${VAR}` / `${env:VAR}` expansion across server string values;
+- `tests/cli/test_cli_mcp_config_watch.py`: concrete `Authorization: Bearer ${MCP_GH_API_KEY}` fixture;
+- `hermes_cli/config.py`: recursive environment-reference expansion and external-secret-source handling.
+
+The reusable idea is only:
+
+```text
+secret source -> process environment -> declarative client config -> Authorization header
+```
+
+For this pilot, MarcoPolo JSON replaces the upstream secret source and `mcporter` replaces Hermes's MCP transport.
+
+## 3. Already observed
+
+The preceding #13 work established with synthetic values:
+
+1. A MarcoPolo `json` connection can store a Basic-auth password in a managed secret field and inject it into an HTTP request.
+2. A `.json` query file containing `url` is a working JSON-connection query contract.
+3. JSON connection output can later be processed by Script Connection.
+4. Output-mediated credential reflection is unsuitable for real secrets because reflected auth can enter connection results and DuckDB.
+5. Script Connection can execute a bounded workspace wrapper with shell mode off.
+6. The installed `mcporter` documents HTTP header values that reference environment variables, including `${VAR}` and `$env:VAR` forms.
+
+Therefore the secret must travel through the authenticated request boundary into Script memory, not through a connector result row.
+
+## 4. Feynman / Five-Whys guard
+
+Each component must answer one observable need.
 
 ```text
 Why JSON connector?
-  -> it is the verified managed-secret injection boundary.
+  -> verified managed-secret storage/injection outside /workspace.
 
-Why an HTTP receiver?
-  -> JSON exposes the managed password through Basic request auth; no credential_ref -> local exec primitive is currently exposed.
+Why one HTTP listener?
+  -> Basic request auth is the currently exposed way to carry that managed password to Script execution.
 
 Why Script Connection?
-  -> it is the verified local capability layer that can host the processor and invoke mcporter.
+  -> verified local capability execution and child-process boundary.
+
+Why child env?
+  -> mcporter already supports symbolic environment references; no reason to construct Bearer in Script logic.
 
 Why mcporter?
-  -> the target use case is authenticated MCP/API tooling; the pilot must prove the translation reaches the actual client boundary.
+  -> the intended use is authenticated MCP tooling; env presence alone does not prove the client sends the credential.
 
 Why a fake MCP endpoint?
-  -> presence of an environment variable alone does not prove mcporter emitted the corresponding Bearer header.
+  -> it proves the same bytes emerge from mcporter as Bearer without involving a real provider.
 ```
 
-Stop rule: if a component cannot be justified by one of these observable needs, remove it. If a gate fails, record the responsible boundary before adding machinery.
+Five Whys is applied only after a concrete failed gate. Stop when the next answer would be speculation. Fix or probe the smallest responsible boundary first.
 
-Explicitly forbidden as first-response fixes: Infisical, another vault, a persistent broker daemon, an external relay, a generic forward proxy, a tunnel, a second secret store, or plaintext bootstrap material.
+A failed gate does **not** authorize adding Infisical, another vault, a daemon, relay, tunnel, generic forward proxy, or second secret store.
 
-## Minimal architecture
+## 5. Minimal architecture
 
-One Script-side Python process owns both synthetic endpoints:
+One Script-side process performs the adapter and synthetic endpoint roles:
 
 ```text
                          one Script process
-                       +---------------------+
-JSON connection ------>| /ingest             |
- managed secret         |   Basic             |
- injected as Basic      |     -> token in RAM |
-                       |          |           |
-                       |          v env only  |
-                       |       mcporter       |
-                       |          | Bearer    |
-                       |          v           |
-                       | /mcp                |
-                       | compare in RAM       |
-                       +----------+----------+
-                                  |
-                                  v
-                             safe receipt
+                       +-------------------------+
+JSON connection ------>| /ingest                 |
+ managed password       |   Basic                 |
+ injected server-side   |     -> password in RAM  |
+                       |          |               |
+                       |          v child env     |
+                       |       PILOT_TOKEN         |
+                       |          |               |
+                       |          v               |
+                       |       mcporter           |
+                       |          |               |
+                       |          | config says   |
+                       |          | Bearer ${...} |
+                       |          v               |
+                       | /mcp <- Authorization    |
+                       |        Bearer ...        |
+                       | compare in RAM           |
+                       +------------+------------+
+                                    |
+                                    v
+                              safe receipt
 ```
 
-The same process can implement `/ingest` and the minimal fake MCP HTTP endpoint. A second fake-server process is not justified for the pilot.
+There is no separate Basic-to-Bearer bridge. The Script adapter only maps the captured password to a child environment variable.
 
-## Acceptance orchestration
+There is no separate fake-MCP process. The same process can serve `/ingest` and the minimal `/mcp` contract concurrently.
 
-The pilot harness, not the Script process, orchestrates the two connection calls:
+There is no secret-bearing mcporter configuration. The pilot uses one project-local mcporter definition containing only the fixed synthetic endpoint and a symbolic environment reference. It is created and read back through mcporter's own config surface before the acceptance run; no per-run config generation is required, and no credential value is stored in it.
+
+## 6. Orchestration boundary
+
+The acceptance harness orchestrates MarcoPolo connections from outside the Script process:
 
 ```text
-1. harness starts the Script Connection query in the background
-   -> processor binds its one-shot HTTP listener
-
-2. harness invokes the JSON connection query
-   -> JSON runner sends configured Basic auth to /ingest
-
-3. processor captures only the Basic password in RAM
-
-4. processor starts mcporter as a child process
-   -> token supplied only through child environment
-   -> mcporter HTTP config contains only a symbolic env reference
-
-5. mcporter performs a minimal MCP call against /mcp
-   -> /mcp verifies Bearer token equals the Basic password captured in RAM
-
-6. processor returns a sanitized PASS/FAIL receipt and exits
-
-7. harness performs leakage checks
+harness
+  -> starts Script Connection query in background
+  -> waits for bounded non-secret READY acknowledgment
+  -> invokes JSON connection query
+  -> waits for Script receipt
+  -> runs observable leakage checks
 ```
 
-This intentionally avoids requiring a Script-executed process to call the MarcoPolo `connection` control plane. Self-orchestration can be researched later only if a real operational use case requires it.
+The Script process does **not** need to invoke `connection query` itself. That control-plane dependency is outside the transport hypothesis and is removed from the pilot.
 
-## Gate order
+### Readiness acknowledgment
 
-### Gate 0 — network reachability
+Codex review found that dispatching JSON immediately after starting Script can misclassify a startup race as network isolation.
 
-Can the privileged JSON runner reach the listener opened by the Script execution plane?
+The handler must acknowledge readiness only **after the listener has successfully bound**. The harness must wait for that acknowledgment with a bounded timeout before invoking JSON.
+
+The readiness channel contains no secret. A fresh non-secret marker/nonce may be used to distinguish the current run from stale state. Failure to obtain READY is a Script-startup failure, not Gate 0 network-isolation evidence.
+
+## 7. Gate order
+
+### Gate R — listener readiness
+
+Postcondition:
 
 ```text
-JSON runner -> Script listener
+script_listener_bound = true
 ```
 
-This is currently **UNKNOWN**. If loopback/network namespaces are isolated, STOP and record that fact. Do not introduce relay/tunnel machinery inside this pilot.
+If READY is not observed within the bounded timeout, STOP as `SCRIPT_NOT_READY`.
 
-### Gate 1 — Basic capture without result materialization
+### Gate 0 — JSON-to-Script reachability
 
-The processor must receive the Authorization header, decode Basic, retain only the password in process memory, and return no credential-bearing response body.
+Only after READY:
 
-### Gate 2 — Basic -> environment -> mcporter -> Bearer
+```text
+JSON executor -> Script /ingest
+```
 
-The processor launches `mcporter` with a child-only environment variable. The mcporter definition references the variable symbolically and does not contain the value.
+This boundary remains **UNKNOWN** until runtime acceptance. If it fails after confirmed readiness, record `JSON_TO_SCRIPT_UNREACHABLE` and STOP. Do not add relay or tunneling machinery inside this pilot.
 
-The fake MCP endpoint accepts the call only when the Bearer token exactly matches the password captured at Gate 1.
+### Gate 1 — managed Basic secret -> Script RAM
 
-### Gate 3 — leakage scan
+`/ingest` accepts one expected Basic-auth request, decodes it in memory, retains only the password for the current run, and returns a sanitized non-secret acknowledgment.
 
-The synthetic marker must not appear in observable persistent/model-visible surfaces after the run.
+The JSON response must not reflect `Authorization`, username/password, or derived credential material.
 
-## Secret boundary
+### Gate 2 — Script RAM -> child env -> mcporter -> Bearer
 
-Allowed transient locations:
+The adapter constructs a child environment mapping without mutating global process environment unnecessarily:
+
+```text
+PILOT_TOKEN=<captured password>
+```
+
+`mcporter` receives no plaintext token in argv. Its MCP definition contains only a symbolic reference equivalent to:
+
+```text
+Authorization: Bearer ${PILOT_TOKEN}
+```
+
+The fake `/mcp` endpoint succeeds only if the Bearer token exactly equals the password captured at Gate 1.
+
+This proves transport equality:
+
+```text
+Basic password bytes == mcporter Bearer token bytes
+```
+
+It does not by itself prove secret isolation from every platform-internal surface.
+
+### Gate 3 — observable leakage scan
+
+Codex review found that plaintext-only scanning is insufficient because Basic auth embeds `username:password` inside Base64.
+
+For the synthetic run, the harness derives scan signatures only in transient test memory and searches all observable surfaces for at least:
+
+```text
+password plaintext
+username:password
+base64(username:password)
+Basic <base64(username:password)>
+Bearer <password>
+```
+
+Also scan any additional exact serialization that the acceptance harness itself emits. Derived signatures must not be committed or included in receipts.
+
+Observable targets include, where accessible:
+
+```text
+/workspace pilot paths
+connection stdout/stderr
+connection result payloads
+DuckDB relation rows/metadata reachable through the normal workspace surface
+mcporter logs/traces produced by the pilot
+process argv visible from the workspace execution plane
+shell history or generated command files
+```
+
+Platform-internal logs, executor memory, or process tables that are not exposed to the workspace remain `UNKNOWN`; absence from visible surfaces must not be promoted to a claim about inaccessible internals.
+
+### Gate 4 — execution-boundary visibility
+
+The security claim requires more than “the token was not persisted.” A child environment is acceptable only if the ordinary workspace/model execution plane cannot read the executor's credential-bearing process environment while the run is live.
+
+Using the synthetic marker only, the pilot should attempt a bounded workspace-side visibility probe when the relevant process identity is observable. Outcomes are explicit:
+
+```text
+workspace cannot address/read executor process env -> ISOLATION_NOT_OBSERVED_AS_BROKEN
+workspace can read synthetic token from process env -> FAIL_SECRET_VISIBLE_TO_WORKSPACE
+process identity/surface not observable            -> UNKNOWN
+```
+
+`UNKNOWN` is not silently converted into a secure-isolation PASS.
+
+## 8. Secret boundary
+
+Allowed transient locations for the synthetic pilot:
 
 ```text
 MarcoPolo managed JSON credential field
-JSON executor request auth
-Script process memory
+JSON executor request Authorization state
+Script handler process memory
 mcporter child environment
 mcporter outbound Authorization header
-fake MCP process memory (same Script process)
+fake MCP handler memory
 ```
 
-Forbidden observable/persistent locations:
+Forbidden persistent/model-visible locations:
 
 ```text
 Git repository
-/workspace files
-query files
-Script query/argv
+/workspace credential-bearing files
+JSON query files
+Script query arguments
 mcporter argv
-persistent mcporter config
+mcporter config values
 stdout/stderr
 connection result payload
-DuckDB relation
+DuckDB rows containing credential material
 trace/record output
 shell history
-issue / PR / review text
+Issue / PR / review text
 ```
 
-No synthetic credential value is committed to this document. The acceptance harness receives only a marker name for leakage scanning through a controlled test mechanism; the real pilot must avoid teaching the repository the credential value.
+The repository may contain only the **name** of the environment variable and the symbolic header template, never its value.
 
-## PASS contract
+## 9. Verdict model
+
+Do not collapse functional transport and isolation into one boolean.
+
+### Transport PASS
 
 All must hold:
 
 ```text
-json_to_script_reachable = true
-basic_received           = true
-mcporter_called          = true
-bearer_matches_basic     = true
-secret_in_workspace      = false
-secret_in_result         = false
-secret_in_duckdb         = false
-secret_in_argv           = false   # where observable
-secret_in_logs           = false
+script_listener_bound  = true
+json_to_script         = true
+basic_received         = true
+mcporter_called        = true
+bearer_matches_basic   = true
 ```
 
-Receipt output should contain booleans/status only, never Authorization, Basic payloads, hashes of the secret, or decoded credential material.
+### Observable non-disclosure PASS
 
-## FAIL-closed rules
+All observable scans must be clean for plaintext and encoded forms:
 
-- listener unreachable -> STOP at Gate 0;
-- missing/malformed Basic -> STOP;
-- mcporter needs plaintext in argv or persistent file -> STOP;
-- Bearer mismatch/absence -> STOP;
-- any secret persistence/model-visible leakage -> STOP;
-- no automatic fallback to relay, daemon, vault, encoded file, or alternate secret store.
+```text
+secret_in_workspace    = false
+secret_in_result       = false
+secret_in_duckdb       = false
+secret_in_argv         = false   # where observable
+secret_in_logs         = false
+basic_encoding_leak    = false
+bearer_header_leak     = false
+```
 
-## Implementation sketch, not commitment
+### Isolation status
 
-A single small Python handler is sufficient if the gates are viable:
+Report independently:
 
-- standard-library threaded HTTP server or equivalent bounded listener;
-- `/ingest` accepts one expected Basic-auth request;
-- token held in an in-memory variable only;
-- temporary mcporter config, if required, contains only `${PILOT_TOKEN}` and is created under `/tmp` then deleted;
-- minimal MCP contract only: enough initialize/tool-list/tool-call behavior for one `probe` call;
-- strict timeout and one-shot shutdown;
-- shell mode remains off;
-- no request/header debug logging.
+```text
+VERIFIED_NOT_WORKSPACE_READABLE
+FAIL_SECRET_VISIBLE_TO_WORKSPACE
+UNKNOWN
+```
 
-The exact implementation should stay smaller than this design. Any new component needs an evidence-backed reason.
+A useful first run may therefore produce:
 
-## Codex consultation questions
+```text
+transport               = PASS
+observable_non_disclosure = PASS
+executor_isolation       = UNKNOWN
+```
 
-Please review this as a **pre-implementation architecture falsification**, not as an invitation to build infrastructure.
+That is evidence, but it is not yet equivalent to a production-secret approval.
 
-1. Is the outer acceptance harness materially simpler than making the Script process invoke `connection query` itself? Is any self-orchestration actually required to prove the transport hypothesis?
-2. Is there a smaller supported mcporter path for child-env -> HTTP Authorization header that avoids even an ephemeral config file?
-3. Can the one-process `/ingest` + fake `/mcp` design deadlock or accidentally force credential logging/materialization under normal mcporter behavior?
-4. Does any current MarcoPolo boundary make Gate 0 impossible or misleading (for example separate network namespaces or executor hosts)?
-5. Are the leakage assertions measurable with the currently exposed runtime, and which must remain `UNKNOWN` rather than be claimed clean?
-6. Is any component above unjustified by the Five-Whys chain?
-7. Most importantly: if a gate fails, identify the smallest responsible boundary. **Do not propose Infisical, another vault, a daemon, relay, tunnel, proxy platform, or additional secret manager unless the failure evidence makes that component strictly necessary.**
+## 10. Receipt contract
 
-The desired review outcome is either a smaller pilot, a concrete falsification, or confirmation that this is the minimum useful experiment.
+The Script result contains booleans/status only, for example:
+
+```json
+{
+  "listener_ready": true,
+  "json_to_script": true,
+  "basic_received": true,
+  "mcporter_called": true,
+  "bearer_matches_basic": true
+}
+```
+
+The outer acceptance harness adds leakage and isolation verdicts after its own checks.
+
+Never emit:
+
+```text
+Authorization header
+Basic payload
+Bearer value
+secret hash/fingerprint
+encoded username:password
+child environment dump
+```
+
+A hash is unnecessary: equality is tested entirely inside the synthetic handler.
+
+## 11. Implementation shape, not implementation
+
+If the gates remain viable, the implementation should stay intentionally small:
+
+- one Python handler;
+- standard-library concurrent HTTP serving is sufficient;
+- one `/ingest` route;
+- one minimal `/mcp` route implementing only the MCP exchange required by one `probe` call;
+- one child `mcporter` invocation;
+- one symbolic environment variable name;
+- one non-secret readiness acknowledgment;
+- bounded timeouts and one-shot shutdown;
+- request/header debug logging disabled;
+- Script shell mode off;
+- no persistent daemon and no secret-bearing temp file.
+
+The pilot uses the static non-secret mcporter definition above. Its exact serialization is owned by mcporter rather than reimplemented by the handler; setup verification is a config readback showing the fixed endpoint and symbolic environment reference only.
+
+## 12. Failure classification
+
+```text
+SCRIPT_NOT_READY
+  -> handler startup/bind problem
+
+JSON_TO_SCRIPT_UNREACHABLE
+  -> network/executor boundary after confirmed readiness
+
+BASIC_MISSING_OR_MALFORMED
+  -> JSON auth injection/request contract
+
+MCPORTER_ENV_REFERENCE_UNSUPPORTED
+  -> mcporter configuration/expansion contract
+
+BEARER_MISMATCH
+  -> env-to-client transport defect
+
+SECRET_PERSISTED_OR_REFLECTED
+  -> disclosure defect
+
+SECRET_VISIBLE_TO_WORKSPACE_PROCESS_INSPECTION
+  -> executor isolation defect
+```
+
+Each failure stops the pilot. Five Whys then starts from that observed symptom. No automatic architecture expansion follows from a failure code.
+
+## 13. Non-goals
+
+This pilot does not decide:
+
+- production provider selection;
+- Buffer or Notion integration;
+- OAuth refresh flows;
+- multiple simultaneous credentials;
+- secret rotation protocol;
+- generic secret references;
+- a persistent local broker;
+- a vault replacement;
+- remote relay/tunnel architecture;
+- Script self-orchestration of MarcoPolo connections.
+
+Those require fresh evidence and a separate decision after this primitive is understood.
+
+## 14. Design acceptance condition
+
+The design is ready for an implementation plan when reviewers agree that:
+
+1. the central primitive is `managed secret -> ephemeral child env`, not a custom Basic-to-Bearer service;
+2. Hermes is used only as a reference for env-reference-to-header composition;
+3. readiness removes the startup-race false negative before Gate 0;
+4. leakage scanning includes recoverable Basic Base64 representations;
+5. functional transport, observable non-disclosure, and executor isolation are reported separately;
+6. no component exists without an evidence-backed reason;
+7. a failed gate stops rather than spawning a vault/daemon/relay fallback.
