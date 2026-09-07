@@ -1,4 +1,4 @@
-# Pilot design v2: JSON managed secret -> ephemeral env -> mcporter
+# Pilot design v3: JSON managed secret -> ephemeral env -> mcporter
 
 Related: #13
 
@@ -50,6 +50,16 @@ secret source -> process environment -> declarative client config -> Authorizati
 ```
 
 For this pilot, MarcoPolo JSON replaces the upstream secret source and `mcporter` replaces Hermes's MCP transport.
+
+### MarcoPolo implementation references
+
+The next design/review pass is grounded in Immersa's public implementation repositories rather than inferred platform behavior:
+
+- `immersa-co/marcopolo-plugin@113b842f35c875a2d8ab5b31eb00675e65cd307c` — exposed plugin/session contract, including the remote `/workspace` surface, `workspace_shell`, product data tools, and browser-based credentialed connection setup;
+- `immersa-co/marcopolo-python-sdk@a2ba6fd7ec6963185be91b450a03639e5bc56749` — public API client and connection-setup contract;
+- `immersa-co/marcopolo-integration-starter@fa8bc2df16057162861a066cb007780219063081` — production-facing reference integration, including namespace-key exchange for short-lived user tokens and SDK/API-backed connection management.
+
+These repositories are authoritative for the public/exposed behavior they implement. They do **not** expose the MarcoPolo backend credential-store implementation, so this pilot makes no claim about a specific encryption-at-rest mechanism. The directly observed claim remains narrower: the managed JSON password is not stored as ordinary plaintext in `/workspace`, and the pilot tests whether it can be consumed without re-materializing it into observable persistent workspace surfaces.
 
 ## 3. Already observed
 
@@ -144,23 +154,30 @@ The Script process does **not** need to invoke `connection query` itself. That c
 
 ### Readiness acknowledgment
 
-Codex review found that dispatching JSON immediately after starting Script can misclassify a startup race as network isolation.
+Codex review found that dispatching JSON immediately after starting Script can misclassify a startup race as network isolation, and then correctly challenged v2 for not naming an observable READY channel.
 
-The handler must acknowledge readiness only **after the listener has successfully bound**. The harness must wait for that acknowledgment with a bounded timeout before invoking JSON.
+V3 makes that channel concrete and non-secret. The harness generates a fresh run nonce and starts Script with that nonce as a harmless argument. After the listener has successfully bound, the handler atomically creates exactly one marker such as:
 
-The readiness channel contains no secret. A fresh non-secret marker/nonce may be used to distinguish the current run from stale state. Failure to obtain READY is a Script-startup failure, not Gate 0 network-isolation evidence.
+```text
+/workspace/artifacts/json-secret-env-pilot/ready-<run_nonce>
+```
+
+with fixed content `READY`. The harness bounded-polls that exact path through the ordinary workspace surface before invoking JSON. The unique nonce prevents a stale marker from satisfying a new run; the harness removes the marker during cleanup.
+
+The marker contains no credential material. If the Script execution plane cannot create a marker that the workspace plane can read, STOP as `READY_CHANNEL_UNAVAILABLE`. That is a concrete capability failure, not evidence of JSON-to-Script network isolation and not justification for adding a broker.
 
 ## 7. Gate order
 
 ### Gate R — listener readiness
 
-Postcondition:
+Postconditions:
 
 ```text
-script_listener_bound = true
+script_listener_bound    = true
+ready_marker_observable  = true
 ```
 
-If READY is not observed within the bounded timeout, STOP as `SCRIPT_NOT_READY`.
+The marker is created only after successful bind. If Script cannot bind, STOP as `SCRIPT_NOT_READY`. If it binds but the nonce-scoped marker is not observable through `/workspace`, STOP as `READY_CHANNEL_UNAVAILABLE`. Only after both conditions hold may Gate 0 run.
 
 ### Gate 0 — JSON-to-Script reachability
 
@@ -232,19 +249,11 @@ shell history or generated command files
 
 Platform-internal logs, executor memory, or process tables that are not exposed to the workspace remain `UNKNOWN`; absence from visible surfaces must not be promoted to a claim about inaccessible internals.
 
-### Gate 4 — execution-boundary visibility
+### Phase-1 scope boundary
 
-The security claim requires more than “the token was not persisted.” A child environment is acceptable only if the ordinary workspace/model execution plane cannot read the executor's credential-bearing process environment while the run is live.
+This pilot does **not** attempt to prove complete executor/process-environment isolation. Codex correctly noted that v2's proposed live-process probe required extra synchronization and could overstate a negative observation as verified isolation. That question is deferred to a separate platform-boundary experiment if Phase 1 succeeds.
 
-Using the synthetic marker only, the pilot should attempt a bounded workspace-side visibility probe when the relevant process identity is observable. Outcomes are explicit:
-
-```text
-workspace cannot address/read executor process env -> ISOLATION_NOT_OBSERVED_AS_BROKEN
-workspace can read synthetic token from process env -> FAIL_SECRET_VISIBLE_TO_WORKSPACE
-process identity/surface not observable            -> UNKNOWN
-```
-
-`UNKNOWN` is not silently converted into a secure-isolation PASS.
+For Phase 1, inaccessible platform-internal logs, executor memory, and process-environment surfaces remain explicitly `UNKNOWN`. No production-security verdict is derived from their absence in the observable workspace plane.
 
 ## 8. Secret boundary
 
@@ -280,18 +289,19 @@ The repository may contain only the **name** of the environment variable and the
 
 ## 9. Verdict model
 
-Do not collapse functional transport and isolation into one boolean.
+Phase 1 has exactly two verdicts plus explicit unknowns; it does not claim executor isolation.
 
 ### Transport PASS
 
 All must hold:
 
 ```text
-script_listener_bound  = true
-json_to_script         = true
-basic_received         = true
-mcporter_called        = true
-bearer_matches_basic   = true
+script_listener_bound   = true
+ready_marker_observable = true
+json_to_script          = true
+basic_received          = true
+mcporter_called         = true
+bearer_matches_basic    = true
 ```
 
 ### Observable non-disclosure PASS
@@ -308,25 +318,23 @@ basic_encoding_leak    = false
 bearer_header_leak     = false
 ```
 
-### Isolation status
-
-Report independently:
+### Explicit UNKNOWN boundary
 
 ```text
-VERIFIED_NOT_WORKSPACE_READABLE
-FAIL_SECRET_VISIBLE_TO_WORKSPACE
-UNKNOWN
+platform_internal_logs        = UNKNOWN
+executor_memory               = UNKNOWN
+executor_process_environment  = UNKNOWN
+credential_store_at_rest_impl = UNKNOWN
 ```
 
-A useful first run may therefore produce:
+A successful Phase 1 therefore means only:
 
 ```text
-transport               = PASS
+transport                 = PASS
 observable_non_disclosure = PASS
-executor_isolation       = UNKNOWN
 ```
 
-That is evidence, but it is not yet equivalent to a production-secret approval.
+It does not equal a production-secret approval.
 
 ## 10. Receipt contract
 
@@ -342,7 +350,7 @@ The Script result contains booleans/status only, for example:
 }
 ```
 
-The outer acceptance harness adds leakage and isolation verdicts after its own checks.
+The outer acceptance harness adds the observable leakage verdict after its own checks; platform-internal isolation remains outside Phase 1.
 
 Never emit:
 
@@ -367,7 +375,7 @@ If the gates remain viable, the implementation should stay intentionally small:
 - one minimal `/mcp` route implementing only the MCP exchange required by one `probe` call;
 - one child `mcporter` invocation;
 - one symbolic environment variable name;
-- one non-secret readiness acknowledgment;
+- one nonce-scoped non-secret READY marker created after listener bind and removed during cleanup;
 - bounded timeouts and one-shot shutdown;
 - request/header debug logging disabled;
 - Script shell mode off;
@@ -380,6 +388,9 @@ The pilot uses the static non-secret mcporter definition above. Its exact serial
 ```text
 SCRIPT_NOT_READY
   -> handler startup/bind problem
+
+READY_CHANNEL_UNAVAILABLE
+  -> Script listener may be bound, but the nonce-scoped non-secret marker is not observable through /workspace
 
 JSON_TO_SCRIPT_UNREACHABLE
   -> network/executor boundary after confirmed readiness
@@ -394,10 +405,7 @@ BEARER_MISMATCH
   -> env-to-client transport defect
 
 SECRET_PERSISTED_OR_REFLECTED
-  -> disclosure defect
-
-SECRET_VISIBLE_TO_WORKSPACE_PROCESS_INSPECTION
-  -> executor isolation defect
+  -> observable disclosure defect
 ```
 
 Each failure stops the pilot. Five Whys then starts from that observed symptom. No automatic architecture expansion follows from a failure code.
@@ -415,7 +423,9 @@ This pilot does not decide:
 - a persistent local broker;
 - a vault replacement;
 - remote relay/tunnel architecture;
-- Script self-orchestration of MarcoPolo connections.
+- Script self-orchestration of MarcoPolo connections;
+- full executor/process-environment isolation;
+- backend credential-store encryption implementation audit.
 
 Those require fresh evidence and a separate decision after this primitive is understood.
 
@@ -425,8 +435,9 @@ The design is ready for an implementation plan when reviewers agree that:
 
 1. the central primitive is `managed secret -> ephemeral child env`, not a custom Basic-to-Bearer service;
 2. Hermes is used only as a reference for env-reference-to-header composition;
-3. readiness removes the startup-race false negative before Gate 0;
+3. readiness uses the concrete nonce-scoped `/workspace` marker channel and therefore removes the startup-race false negative before Gate 0 without a new service;
 4. leakage scanning includes recoverable Basic Base64 representations;
-5. functional transport, observable non-disclosure, and executor isolation are reported separately;
-6. no component exists without an evidence-backed reason;
-7. a failed gate stops rather than spawning a vault/daemon/relay fallback.
+5. Phase 1 reports only transport and observable non-disclosure, while inaccessible executor/platform surfaces remain `UNKNOWN`;
+6. the public Immersa repositories are cited for exposed behavior, while backend credential-store guarantees are not inferred from them;
+7. no component exists without an evidence-backed reason;
+8. a failed gate stops rather than spawning a vault/daemon/relay fallback.
