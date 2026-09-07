@@ -1,6 +1,7 @@
 import base64
 import http.client
 import json
+import os
 import sys
 import tempfile
 import threading
@@ -163,6 +164,51 @@ class HandlerTests(unittest.TestCase):
             marker = write_ready_marker("abc123", root=Path(tmp))
             self.assertEqual(marker.read_text(), "READY")
             self.assertEqual(marker.name, "ready-abc123")
+
+
+class McporterIntegrationTests(unittest.TestCase):
+    def test_real_mcporter_transmits_value_as_bearer_without_leaking_output(self):
+        config_path = MODULE_DIR / "mcporter.json"
+        self.assertTrue(config_path.is_file(), "Task 3 static mcporter config is missing")
+
+        state = PilotState()
+        server = create_server(state, host="127.0.0.1", port=18765)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+
+        connection = http.client.HTTPConnection("127.0.0.1", 18765, timeout=2)
+        value = "synthetic-mcporter-value"
+        payload = base64.b64encode(f"pilot-user:{value}".encode("ascii")).decode("ascii")
+        parent_value_before = os.environ.get("PILOT_TOKEN")
+
+        try:
+            connection.request(
+                "POST",
+                "/ingest",
+                headers={"Authorization": f"Basic {payload}"},
+            )
+            response = connection.getresponse()
+            response.read()
+            self.assertEqual(response.status, 204)
+
+            import pilot_auth_pipe as pilot_module
+
+            spawn = getattr(pilot_module, "spawn_mcporter", None)
+            self.assertTrue(callable(spawn), "spawn_mcporter is not implemented")
+
+            completed = spawn(value, str(config_path))
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertTrue(state.mcporter_called)
+            self.assertTrue(state.bearer_matches_basic)
+            combined_output = f"{completed.stdout}\n{completed.stderr}"
+            self.assertNotIn(value, combined_output)
+            self.assertEqual(os.environ.get("PILOT_TOKEN"), parent_value_before)
+        finally:
+            connection.close()
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
 
 
 if __name__ == "__main__":
