@@ -243,9 +243,10 @@ connection stdout/stderr
 connection result payloads
 DuckDB relation rows/metadata reachable through the normal workspace surface
 mcporter logs/traces produced by the pilot
-process argv visible from the workspace execution plane
 shell history or generated command files
 ```
+
+`mcporter` argv is handled separately because the child may have exited before the post-run scan. The implementation must construct the child argv entirely from fixed/non-secret values and pass the captured password only through the child environment. A test must verify the exact argv before spawn. If live argv is additionally observable, record `secret_in_argv = false` or `true`; otherwise record `secret_in_argv = UNKNOWN`. `UNKNOWN` must never be rewritten as `false`.
 
 Platform-internal logs, executor memory, or process tables that are not exposed to the workspace remain `UNKNOWN`; absence from visible surfaces must not be promoted to a claim about inaccessible internals.
 
@@ -306,17 +307,21 @@ bearer_matches_basic    = true
 
 ### Observable non-disclosure PASS
 
-All observable scans must be clean for plaintext and encoded forms:
+All observable scans must be clean for plaintext and encoded forms, and the fixed/non-secret argv construction contract must be verified before spawn:
 
 ```text
-secret_in_workspace    = false
-secret_in_result       = false
-secret_in_duckdb       = false
-secret_in_argv         = false   # where observable
-secret_in_logs         = false
-basic_encoding_leak    = false
-bearer_header_leak     = false
+secret_in_workspace = false
+secret_in_result    = false
+secret_in_duckdb    = false
+secret_in_logs      = false
+basic_encoding_leak = false
+bearer_header_leak  = false
+
+argv_contract_verified = true
+secret_in_argv          = false | true | UNKNOWN
 ```
+
+A live `secret_in_argv = true` is a failure. `UNKNOWN` is allowed only because `argv_contract_verified = true` independently proves that credential-derived bytes are not supplied through argv; it is never reported as a negative observation.
 
 ### Explicit UNKNOWN boundary
 
@@ -373,8 +378,9 @@ If the gates remain viable, the implementation should stay intentionally small:
 - standard-library concurrent HTTP serving is sufficient;
 - one `/ingest` route;
 - one minimal `/mcp` route implementing only the MCP exchange required by one `probe` call;
-- one child `mcporter` invocation;
-- one symbolic environment variable name;
+- one child `mcporter` invocation whose argv contains only fixed/non-secret values;
+- one pre-spawn assertion/test of the exact mcporter argv;
+- one symbolic environment variable name carrying the captured password only in the child environment;
 - one nonce-scoped non-secret READY marker created after listener bind and removed during cleanup;
 - bounded timeouts and one-shot shutdown;
 - request/header debug logging disabled;
@@ -439,5 +445,6 @@ The design is ready for an implementation plan when reviewers agree that:
 4. leakage scanning includes recoverable Basic Base64 representations;
 5. Phase 1 reports only transport and observable non-disclosure, while inaccessible executor/platform surfaces remain `UNKNOWN`;
 6. the public Immersa repositories are cited for exposed behavior, while backend credential-store guarantees are not inferred from them;
-7. no component exists without an evidence-backed reason;
-8. a failed gate stops rather than spawning a vault/daemon/relay fallback.
+7. the mcporter argv contract is verified from fixed/non-secret inputs before spawn, while unavailable live argv remains `UNKNOWN`;
+8. no component exists without an evidence-backed reason;
+9. a failed gate stops rather than spawning a vault/daemon/relay fallback.
