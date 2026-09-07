@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "pilot": {
+      "description": "Synthetic localhost auth transport probe",
+      "baseUrl": "http://127.0.0.1:18765/mcp",
+      "headers": {
+        "Authorization": "Bearer ${PILOT_TOKEN}"
+      }
+    }
+  }
+}

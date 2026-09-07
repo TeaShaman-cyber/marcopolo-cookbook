@@ -5,6 +5,7 @@ import binascii
 import hmac
 import json
 import os
+import subprocess
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -53,6 +54,19 @@ def build_mcporter_argv(config_path: str) -> tuple[str, ...]:
         config_path,
         "call",
         "pilot.probe",
+    )
+
+
+def spawn_mcporter(value: str, config_path: str) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["PILOT_TOKEN"] = value
+    return subprocess.run(
+        build_mcporter_argv(config_path),
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=20,
+        check=False,
     )
 
 
