@@ -94,7 +94,26 @@ the mutation. Make the route change visible, perform the smallest sufficient
 mutation, and verify the exact remote postcondition through an independently
 available read when practical.
 
-Git-backed writes may use `git` under the same `gh-write` environment. After
-any mutation, verify the exact remote postcondition. Do not infer write
-capability from read authentication, and do not silently substitute a different
-GitHub route after an authentication failure without reporting the route change.
+For ordinary Git operations against `github.com`, install the cookbook-managed
+credential binding once per workspace/runtime configuration:
+
+```bash
+/workspace/marcopolo-cookbook/github-git-auth.sh --install
+```
+
+After that, plain `git fetch`, `git pull`, and explicitly authorized `git push`
+use the `gh-write` credential helper without requiring `GH_CONFIG_DIR` in every
+shell command. `gh` commands still use the explicit read/write profiles shown
+above; the Git helper changes credential selection only and does not grant
+mutation permission.
+
+Verify the binding with:
+
+```bash
+/workspace/marcopolo-cookbook/github-git-auth.sh --check
+```
+
+After any Git mutation, verify the exact remote postcondition. Do not infer
+write permission from credential availability, and do not silently substitute a
+different GitHub route after an authentication failure without reporting the
+route change.

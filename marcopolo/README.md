@@ -298,7 +298,7 @@ If the `(target_type, operation)` tuple does not match the tool primitive, stop 
 
 ## 6. Ordinary `git push` can fail while GitHub API writes still work
 
-Smart-HTTP `git push` from MarcoPolo began returning HTTP `403`, even though issue comments and GitHub API mutations through governed `gh-write` still worked.
+A `git push` HTTP `403` can come from the wrong Git credential profile as well as a real smart-HTTP obstruction. Before treating it as transport failure, verify the cookbook-managed Git helper binding and retry a non-mutating push probe.
 
 A smart-HTTP `403` does not by itself authorize another mutation route. First
 classify the failure:
@@ -678,7 +678,7 @@ Never collapse metadata into capability authority.
 | `workspace_shell` timeout | execution window / long command | underlying remote job failed | split calls; re-read target |
 | MarcoPolo `502` | connector/control plane | GitHub Action failed | query GitHub independently |
 | GitHub write `403` | connector/app authority | repository read-only everywhere | use governed `gh-write`; native readback |
-| `git push` `403` | smart-HTTP path | Git Database API cannot write | governed API fallback + exact readback |
+| `git push` `403` | Git credential context or smart-HTTP path | Git Database API cannot write | check default Git helper; dry-run; only then consider fallback |
 | API ref read shows old SHA after write | stale read | write rolled back | fetch/query independently |
 | `origin` missing | no checkout/local remote | remote branch absent | explicit repository URL |
 | valid SHA rejected | shell validation | requested SHA invalid | Bash regex + test |
@@ -816,41 +816,39 @@ Update this README whenever a new MarcoPolo failure mode produces a **reusable w
 
 ---
 
-## 23. `gh auth setup-git` does not make a custom `GH_CONFIG_DIR` magically permanent
+## 23. Default GitHub Git credential binding
 
 ### Observed symptom
 
-A governed push succeeded when invoked as:
-
-```bash
-GH_CONFIG_DIR=/workspace/.config/gh-write git push ...
-```
-
-but a later plain:
-
-```bash
-git fetch origin main
-```
-
-returned GitHub HTTP `403`.
+`gh auth setup-git` installed a Git credential helper that delegated to `gh auth git-credential` without pinning the MarcoPolo write profile. Plain Git therefore depended on whichever `GH_CONFIG_DIR` happened to reach the Git subprocess. A controlled probe showed the read/default profile returning HTTP `403` while the write profile succeeded for the same repository.
 
 ### Root cause class
 
-`gh auth setup-git` configures Git to use the GitHub CLI credential helper, but a custom MarcoPolo `GH_CONFIG_DIR` is process environment. A later Git process that invokes `gh` without that environment can resolve a different/no GitHub CLI credential context.
+`GH_CONFIG_DIR` is process environment, not persistent Git helper state. Remembering to export it in every shell command is fragile and creates avoidable routing mistakes.
 
-### Safe pattern
+### Cookbook-managed default
 
-For governed Git operations in this workspace, bind the configuration explicitly for the command group:
+Install the binding once:
 
 ```bash
-export GH_CONFIG_DIR=/workspace/.config/gh-write
-git fetch origin main
-git push origin main
+/workspace/marcopolo-cookbook/github-git-auth.sh --install
 ```
 
-or prefix each command individually.
+The installer keeps Git's host-specific empty helper entry, which resets inherited generic helpers, and then binds `github.com` directly to:
 
-Do not interpret the resulting unauthenticated/wrong-context `403` as evidence that repository permissions changed until the same operation is retried in the intended governed credential context.
+```text
+GH_CONFIG_DIR=/workspace/.config/gh-write ... gh auth git-credential
+```
+
+Verify without mutation:
+
+```bash
+/workspace/marcopolo-cookbook/github-git-auth.sh --check
+```
+
+After installation, plain `git fetch` / `git pull` / `git push` no longer require a manually exported `GH_CONFIG_DIR`. This changes credential selection only. Permission and authority remain governed by the Project Contract; write-capable credentials are never themselves authorization to mutate an external repository.
+
+If plain Git returns `403`, run `github-git-auth.sh --check` and a non-mutating `git push --dry-run` before classifying the failure as smart-HTTP transport or escalating to another write route.
 
 ## 24. Use local temporary storage as a build/runtime proxy for heavy tool trees
 
