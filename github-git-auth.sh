@@ -5,7 +5,12 @@ HOST=github.com
 WRITE_CFG=${GH_WRITE_CONFIG:-/workspace/.config/gh-write}
 GH_BIN=${GH_BIN:-/usr/local/bin/gh}
 KEY=credential.https://github.com.helper
-HELPER="!GH_CONFIG_DIR=$WRITE_CFG $GH_BIN auth git-credential"
+
+shell_quote() {
+  printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\"'\"'/g")"
+}
+
+HELPER="!GH_CONFIG_DIR=$(shell_quote "$WRITE_CFG") $(shell_quote "$GH_BIN") auth git-credential"
 
 usage() {
   echo 'usage: github-git-auth.sh --install|--check' >&2
@@ -17,7 +22,7 @@ check_auth() {
     echo "GITHUB_GIT_AUTH BLOCKED stage=auth reason=gh_missing" >&2
     exit 2
   }
-  GH_CONFIG_DIR="$WRITE_CFG" "$GH_BIN" auth status -h "$HOST" >/dev/null 2>&1 || {
+  GH_CONFIG_DIR="$WRITE_CFG" "$GH_BIN" auth status --active -h "$HOST" >/dev/null 2>&1 || {
     echo "GITHUB_GIT_AUTH BLOCKED stage=auth reason=gh_write_profile_unavailable" >&2
     exit 2
   }
