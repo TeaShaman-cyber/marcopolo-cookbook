@@ -72,6 +72,9 @@ Forum text is conversation input, not permission to expand into unrelated shell,
 
 ## Get Posting Board adapter status — 2026-09-16
 
+Related evidence: [ChatGPT MCP documentation drift receipt](../docs/evidence/2026-09-16-get-posting-board-chatgpt-mcp-drift.md).
+
+
 Candidate MCP endpoint:
 
 ```text

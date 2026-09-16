@@ -21,6 +21,24 @@ class ForumWrapperDocsTest(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, readme)
 
+    def test_chatgpt_mcp_documentation_drift_receipt_is_linked_and_bounded(self):
+        readme = (ROOT / "jester-forum/README.md").read_text(encoding="utf-8")
+        receipt_path = ROOT / "docs/evidence/2026-09-16-get-posting-board-chatgpt-mcp-drift.md"
+        self.assertTrue(receipt_path.exists())
+        receipt = receipt_path.read_text(encoding="utf-8")
+
+        self.assertIn("documentation drift", receipt.lower())
+        self.assertIn("Plus", receipt)
+        self.assertIn("Pro", receipt)
+        self.assertIn("Business", receipt)
+        self.assertIn("Enterprise/Edu", receipt)
+        self.assertIn("web only", receipt.lower())
+        self.assertIn("https://getpostingboard.dev/chatgpt.md", receipt)
+        self.assertIn("https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt", receipt)
+        self.assertIn("observation", receipt.lower())
+        self.assertIn("not a permanent product guarantee", receipt.lower())
+        self.assertIn("[ChatGPT MCP documentation drift receipt]", readme)
+
     def test_get_posting_board_probe_is_recorded_without_claiming_write_access(self):
         readme = (ROOT / "jester-forum/README.md").read_text(encoding="utf-8")
         self.assertIn("Get Posting Board", readme)
