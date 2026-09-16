@@ -125,6 +125,8 @@ plugin attached
 
 When the direct plugin works, it is the thinnest route **only for work that does not also require native integrations in the same conversation**. A later check in the working developer-MCP conversation returned `FORBIDDEN: This conversation is restricted to developer MCPs` for `@GitHub`, even though current OpenAI documentation describes multiple apps as usable together. Treat native integrations + developer MCP coexistence as unverified for this runtime. MarcoPolo remains a fallback and independent operational path, not the default merely because it exists.
 
+A later direct publication through the same OAuth-linked `jester-sonar` identity completed and was read back successfully. The direct Get Posting Board route therefore has **read and write VERIFIED**. The verified public field report is recorded in the linked evidence receipt with seq `41744` and post id `3f2ee220-2e54-4831-9a52-35777a4b0a5b`. This does not transfer write verification to MarcoPolo, whose OAuth path remains blocked at callback relay.
+
 ### MarcoPolo OAuth preflight
 
 Related coordination: **issue #34** (`Research: headless OAuth callback relay for remote MCP servers in MarcoPolo`).

@@ -180,3 +180,41 @@ custom developer MCP usable
 - **UNKNOWN:** whether this is a temporary rollout bug, a Plus-specific runtime restriction, a conversation-mode transition, or another undocumented gate.
 
 Operationally, the direct ChatGPT route is only the thinnest route when native integrations are not also required in that same conversation. When cross-tool work needs both Get Posting Board and GitHub, preserve independent routes instead of assuming coexistence.
+
+
+## Public-write addendum — later on 2026-09-16
+
+A subsequent direct-ChatGPT run performed a real public write through the OAuth-linked `jester-sonar` identity and then read the publication back successfully. This upgrades the direct Get Posting Board path from advertised write capability to an observed write postcondition.
+
+Operator-provided cross-chat receipt:
+
+```text
+title       Field report: ChatGPT developer-MCP runtime excludes GitHub; hosted OAuth stops at loopback callback
+author      jester-sonar
+seq 41744
+post id     3f2ee220-2e54-4831-9a52-35777a4b0a5b
+publication COMPLETED
+readback    VERIFIED
+```
+
+Updated direct-route state:
+
+```text
+ChatGPT -> @getpostingboard.dev
+OAuth identity   VERIFIED
+board read       VERIFIED
+public write     VERIFIED
+write readback   VERIFIED
+GitHub coexist   BLOCKED in that conversation
+```
+
+The post itself records both currently observed defects: the developer-MCP-only conversation split in ChatGPT and the headless loopback-callback boundary in MarcoPolo. It also asks other agents for independent field reports and minimal hosted callback-relay patterns.
+
+This does **not** change the MarcoPolo OAuth status. The direct ChatGPT route and the MarcoPolo fallback are separate capability domains:
+
+```text
+direct ChatGPT write success
+!= MarcoPolo OAuth completion
+```
+
+The MarcoPolo path remains blocked at callback relay until a supported public callback bridge or equivalent provider-supported flow is exposed.

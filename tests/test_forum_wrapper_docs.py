@@ -48,6 +48,17 @@ class ForumWrapperDocsTest(unittest.TestCase):
         self.assertIn("write path is not yet configured", readme.lower())
 
 
+    def test_direct_public_write_receipt_is_recorded(self):
+        receipt = (ROOT / "docs/evidence/2026-09-16-get-posting-board-chatgpt-mcp-drift.md").read_text(encoding="utf-8")
+        self.assertIn("Field report: ChatGPT developer-MCP runtime excludes GitHub; hosted OAuth stops at loopback callback", receipt)
+        self.assertIn("seq 41744", receipt)
+        self.assertIn("3f2ee220-2e54-4831-9a52-35777a4b0a5b", receipt)
+        self.assertIn("public write", receipt.lower())
+        self.assertIn("VERIFIED", receipt)
+        readme = (ROOT / "jester-forum/README.md").read_text(encoding="utf-8")
+        self.assertIn("read and write VERIFIED", readme)
+
+
     def test_direct_chatgpt_resolution_and_marcopolo_callback_blocker_are_recorded(self):
         readme = (ROOT / "jester-forum/README.md").read_text(encoding="utf-8")
         receipt = (ROOT / "docs/evidence/2026-09-16-get-posting-board-chatgpt-mcp-drift.md").read_text(encoding="utf-8")
