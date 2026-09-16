@@ -1,0 +1,202 @@
+name: Repo lens zeta23 exact-graph smoke
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/repo-lens-zeta23-smoke.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  TARGET_REPO: anthropics/formal-math
+  TARGET_COMMIT: fbdc36bbf17d20af3fd0447c6d1a8a02773c9844
+  LEANDEPVIZ_COMMIT: 7859d91f89b37c9193d9a09709a58be6d98f94d6
+  LEANDEPVIZ_MAIN_SHA256: 7051af16c579dc425859442bbe7b647eaea78a581ddf685c5951c2b7bf28ceed
+
+jobs:
+  exact-graph:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout experiment host
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Checkout pinned target
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: ${{ env.TARGET_REPO }}
+          ref: ${{ env.TARGET_COMMIT }}
+          path: _target/formal-math
+          persist-credentials: false
+
+      - name: Verify target binding
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(git -C _target/formal-math rev-parse HEAD)"
+          test "$actual" = "$TARGET_COMMIT"
+          printf 'target_commit=%s\n' "$actual"
+
+      - name: Install target Lean toolchain
+        uses: leanprover/lean-action@50fcf42d2e460296f1a34b402e990d1b24f8b596
+        with:
+          build: false
+          lake-package-directory: _target/formal-math/zeta23
+
+      - name: Restore Mathlib cache and build Zeta23
+        working-directory: _target/formal-math/zeta23
+        shell: bash
+        run: |
+          set -euo pipefail
+          lean --version
+          lake --version
+          lake exe cache get
+          lake build Zeta23
+
+      - name: Fetch pinned standalone LeanDepViz extractor
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://raw.githubusercontent.com/cameronfreer/LeanDepViz/${LEANDEPVIZ_COMMIT}/LeanDepViz/Main.lean"
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output "$RUNNER_TEMP/LeanDepVizMain.lean" "$url"
+          echo "${LEANDEPVIZ_MAIN_SHA256}  $RUNNER_TEMP/LeanDepVizMain.lean" | sha256sum --check
+
+      - name: Extract exact declaration graph
+        working-directory: _target/formal-math/zeta23
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/_artifact"
+          lake env lean --run "$RUNNER_TEMP/LeanDepVizMain.lean" \
+            --roots Zeta23 \
+            --json-out "$GITHUB_WORKSPACE/_artifact/depgraph.json"
+
+      - name: Bind artifact and replay registered graph questions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import pathlib
+          from collections import defaultdict, deque
+
+          root = pathlib.Path(os.environ["GITHUB_WORKSPACE"])
+          artifact = root / "_artifact"
+          graph_path = artifact / "depgraph.json"
+          graph_bytes = graph_path.read_bytes()
+          graph = json.loads(graph_bytes)
+          nodes = graph["nodes"]
+          edges = graph["edges"]
+
+          def suffix_matches(name, needle):
+              return name == needle or name.endswith("." + needle)
+
+          def matching_names(needle):
+              return sorted({n["fullName"] for n in nodes if suffix_matches(n["fullName"], needle)})
+
+          incoming = defaultdict(list)
+          outgoing = defaultdict(list)
+          for edge in edges:
+              incoming[edge["target"]].append(edge)
+              outgoing[edge["source"]].append(edge)
+
+          def edge_targets_for_decl(needle):
+              names = matching_names(needle)
+              result = []
+              for name in names:
+                  result.extend(incoming.get(name, []))
+                  # LeanDepViz edge names may use the environment name rather than NodeJson.fullName.
+                  short = name.split(".")[-1]
+                  result.extend(incoming.get(short, []))
+              dedup = {(e["source"], e["target"], e["kind"]): e for e in result}
+              return names, sorted(dedup.values(), key=lambda e: (e["kind"], e["source"], e["target"]))
+
+          def reverse_edges(needle):
+              candidates = {needle}
+              candidates.update(matching_names(needle))
+              result = []
+              for source in candidates:
+                  result.extend(outgoing.get(source, []))
+              result.extend(e for e in edges if suffix_matches(e["source"], needle))
+              dedup = {(e["source"], e["target"], e["kind"]): e for e in result}
+              return sorted(dedup.values(), key=lambda e: (e["kind"], e["target"], e["source"]))
+
+          def ancestors(needle, max_depth=5):
+              starts = matching_names(needle)
+              # Also accept raw environment edge targets matching the suffix.
+              starts += sorted({e["target"] for e in edges if suffix_matches(e["target"], needle)})
+              q = deque((s, 0) for s in dict.fromkeys(starts))
+              seen = set(starts)
+              result = []
+              while q:
+                  target, depth = q.popleft()
+                  if depth >= max_depth:
+                      continue
+                  for edge in incoming.get(target, []):
+                      source = edge["source"]
+                      result.append({"depth": depth + 1, **edge})
+                      if source not in seen:
+                          seen.add(source)
+                          q.append((source, depth + 1))
+              return starts, result
+
+          tight_names, tight_deps = edge_targets_for_decl("lemmaR_tight_two")
+          ranktrace_users = reverse_edges("rank_trace_mult_k")
+          certificate_names, certificate_ancestors = ancestors("count_certificate", max_depth=5)
+
+          if not tight_names or not tight_deps:
+              raise SystemExit("exact replay failed: lemmaR_tight_two dependencies missing")
+          if not ranktrace_users:
+              raise SystemExit("exact replay failed: rank_trace_mult_k reverse dependencies missing")
+          if not certificate_names or not certificate_ancestors:
+              raise SystemExit("exact replay failed: count_certificate ancestor path missing")
+
+          target_actual = os.popen("git -C _target/formal-math rev-parse HEAD").read().strip()
+          manifest = {
+              "schema": "theseus.repo-index-smoke.v1",
+              "source_repo": os.environ["TARGET_REPO"],
+              "source_commit": target_actual,
+              "source_subdir": "zeta23",
+              "root_module": "Zeta23",
+              "extractor_repo": "cameronfreer/LeanDepViz",
+              "extractor_commit": os.environ["LEANDEPVIZ_COMMIT"],
+              "extractor_main_sha256": os.environ["LEANDEPVIZ_MAIN_SHA256"],
+              "depgraph_sha256": hashlib.sha256(graph_bytes).hexdigest(),
+              "nodes": len(nodes),
+              "edges": len(edges),
+              "edge_kinds": sorted({e["kind"] for e in edges}),
+          }
+          replay = {
+              "lemmaR_tight_two": {
+                  "matched_declarations": tight_names,
+                  "direct_dependencies": tight_deps,
+              },
+              "rank_trace_mult_k": {
+                  "reverse_dependencies": ranktrace_users,
+              },
+              "count_certificate": {
+                  "matched_declarations": certificate_names,
+                  "ancestors_depth_le_5": certificate_ancestors,
+              },
+          }
+          (artifact / "manifest.json").write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+          (artifact / "replay.json").write_text(json.dumps(replay, indent=2, sort_keys=True) + "\n")
+          print(json.dumps(manifest, sort_keys=True))
+          print("tight_direct_dependencies", len(tight_deps))
+          print("ranktrace_reverse_dependencies", len(ranktrace_users))
+          print("certificate_ancestors_depth_le_5", len(certificate_ancestors))
+          PY
+
+      - name: Upload exact graph artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: zeta23-exact-depgraph
+          path: _artifact/
+          if-no-files-found: error
