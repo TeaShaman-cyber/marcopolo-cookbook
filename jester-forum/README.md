@@ -106,3 +106,57 @@ endpoint reachable
 ```
 
 So the transport candidate is identified, but the **write path is not yet configured**. Do not store tokens in the cookbook or treat the 401 challenge as evidence that either scope has been granted. The next increment, if pursued, should establish identity/authentication and then reproduce the existing write-plus-readback discipline before enabling ordinary posting or replies.
+
+
+### Direct ChatGPT resolution
+
+Later on 2026-09-16, the Get Posting Board developer MCP was successfully invoked from a **new ChatGPT conversation** after being attached through Plugins. `get_my_agent` returned the existing `jester-sonar` identity and a live forum read completed. The older conversation still represented a stale/unsupported tool runtime and had returned `FORBIDDEN`.
+
+Treat these separately:
+
+```text
+plugin attached
+!= existing conversation refreshed
+!= tool invocation verified
+!= authenticated identity verified
+!= read verified
+!= write verified
+```
+
+When the direct plugin works, it is the thinnest route **only for work that does not also require native integrations in the same conversation**. A later check in the working developer-MCP conversation returned `FORBIDDEN: This conversation is restricted to developer MCPs` for `@GitHub`, even though current OpenAI documentation describes multiple apps as usable together. Treat native integrations + developer MCP coexistence as unverified for this runtime. MarcoPolo remains a fallback and independent operational path, not the default merely because it exists.
+
+### MarcoPolo OAuth preflight
+
+Related coordination: **issue #34** (`Research: headless OAuth callback relay for remote MCP servers in MarcoPolo`).
+
+A live `mcporter 0.13.8` authorization probe against Get Posting Board completed dynamic client registration and PKCE setup, then advertised a loopback callback on `127.0.0.1` with a random port. In a headless MarcoPolo runtime, browser approval on another device cannot return to that loopback listener.
+
+The current exposed MarcoPolo connection catalog provides hosted OAuth setup for supported canonical connection types, but no generic arbitrary remote-MCP OAuth connection type was observed. The installed `mcporter` implementation does support an `oauthRedirectUrl` server-definition field, so a future supported callback relay can be used without patching mcporter itself.
+
+Current status:
+
+```text
+MCP endpoint reachable                VERIFIED
+OAuth metadata / DCR / PKCE           VERIFIED
+mcporter authorization URL            VERIFIED
+callback destination                  LOOPBACK
+native arbitrary-MCP callback relay   NOT EXPOSED
+OAuth completion in MarcoPolo         BLOCKED
+board identity via MarcoPolo          NOT VERIFIED
+board read via MarcoPolo              NOT VERIFIED
+board write via MarcoPolo             NOT VERIFIED
+```
+
+The deterministic preflight helper is:
+
+```bash
+jester-forum/get-posting-board-auth-probe.sh
+```
+
+It runs with disposable `HOME`/`XDG_CONFIG_HOME` under `/tmp`, uses the pinned `/workspace/tools/mcporter/bin/mcporter`, persists no OAuth credential into the cookbook, and normalizes the observed loopback result to:
+
+```text
+AUTH_CALLBACK_RELAY_UNAVAILABLE
+```
+
+Do not work around this by pasting authorization codes or tokens into chat, repository files, shell arguments, or traces. Do not create a second board identity merely to avoid the OAuth boundary.

@@ -48,5 +48,23 @@ class ForumWrapperDocsTest(unittest.TestCase):
         self.assertIn("write path is not yet configured", readme.lower())
 
 
+    def test_direct_chatgpt_resolution_and_marcopolo_callback_blocker_are_recorded(self):
+        readme = (ROOT / "jester-forum/README.md").read_text(encoding="utf-8")
+        receipt = (ROOT / "docs/evidence/2026-09-16-get-posting-board-chatgpt-mcp-drift.md").read_text(encoding="utf-8")
+
+        self.assertIn("jester-sonar", receipt)
+        self.assertIn("new conversation", receipt.lower())
+        self.assertIn("FORBIDDEN", receipt)
+        self.assertIn("read access", receipt.lower())
+        self.assertIn("AUTH_CALLBACK_RELAY_UNAVAILABLE", readme)
+        self.assertIn("get-posting-board-auth-probe.sh", readme)
+        self.assertIn("issue #34", readme.lower())
+        self.assertIn("restricted to developer MCPs", receipt)
+        self.assertIn("GitHub", receipt)
+        self.assertIn("coexistence", receipt.lower())
+        self.assertIn("multiple apps", receipt.lower())
+        self.assertIn("native integrations", readme.lower())
+
+
 if __name__ == "__main__":
     unittest.main()
