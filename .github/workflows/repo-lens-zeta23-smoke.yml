@@ -9,11 +9,17 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: repo-lens-zeta23-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   TARGET_REPO: anthropics/formal-math
   TARGET_COMMIT: fbdc36bbf17d20af3fd0447c6d1a8a02773c9844
   LEANDEPVIZ_COMMIT: 7859d91f89b37c9193d9a09709a58be6d98f94d6
   LEANDEPVIZ_MAIN_SHA256: 7051af16c579dc425859442bbe7b647eaea78a581ddf685c5951c2b7bf28ceed
+  ELAN_VERSION: v4.2.3
+  ELAN_SHA256: df0b2b3a439961ffcbb3985214365ffe40f49bc871df04dff268c7d8e21ca8b2
 
 jobs:
   exact-graph:
@@ -41,11 +47,18 @@ jobs:
           test "$actual" = "$TARGET_COMMIT"
           printf 'target_commit=%s\n' "$actual"
 
-      - name: Install target Lean toolchain
-        uses: leanprover/lean-action@50fcf42d2e460296f1a34b402e990d1b24f8b596
-        with:
-          build: false
-          lake-package-directory: _target/formal-math/zeta23
+      - name: Install pinned Elan
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --proto '=https' --tlsv1.2 \
+            --output "$RUNNER_TEMP/elan.tar.gz" \
+            "https://github.com/leanprover/elan/releases/download/${ELAN_VERSION}/elan-x86_64-unknown-linux-gnu.tar.gz"
+          echo "${ELAN_SHA256}  $RUNNER_TEMP/elan.tar.gz" | sha256sum --check
+          mkdir -p "$RUNNER_TEMP/elan"
+          tar -xzf "$RUNNER_TEMP/elan.tar.gz" -C "$RUNNER_TEMP/elan"
+          "$RUNNER_TEMP/elan/elan-init" -y --no-modify-path --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
       - name: Restore Mathlib cache and build Zeta23
         working-directory: _target/formal-math/zeta23
