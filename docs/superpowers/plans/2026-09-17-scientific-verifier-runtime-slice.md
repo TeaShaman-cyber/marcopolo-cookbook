@@ -99,6 +99,12 @@ python3 -m venv "$TMP/venv"
 "$TMP/venv/bin/python" - <<'PY'
 import importlib.metadata as m
 import sys
+
+import networkx
+import numpy
+import scipy
+import sympy
+
 print("python", sys.version.split()[0])
 for name in ("numpy", "networkx", "sympy", "scipy"):
     print(name, m.version(name))
