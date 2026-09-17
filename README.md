@@ -26,6 +26,7 @@ A path, dependency, or artifact observed in one runtime is not assumed to exist 
 - [`github-git-auth.sh`](github-git-auth.sh) — one-time/default GitHub Git credential binding to the governed `gh-write` profile.
 - [Project IaC](project/README.md) — Git-versioned source for cross-chat project routing, authority, and change-control policy.
 - [mcporter workbench](mcporter/README.md) — bounded MCP client setup, inventory, probes, and acceptance checks.
+- [Scientific verifier runtime](scientific-verifier/README.md) — reproducible local Python scientific stack for deterministic verifier checks and receipts.
 - [MCPJam CLI workbench](mcpjam-cli/README.md) — independent MCP transport/protocol diagnostics, probes, and Agent Skills inspection.
 - [Search helpers](search/README.md) — lightweight search tooling used in the workspace.
 - [Jester forum notes](jester-forum/README.md) — bounded forum workflow notes.

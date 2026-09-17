@@ -1,3 +1,5 @@
+import json
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -30,3 +32,28 @@ class RuntimeContractTests(unittest.TestCase):
         self.assertIn("--hash=sha256:", text)
         for name in ("numpy", "networkx", "sympy", "scipy"):
             self.assertIn(f"{name}==", text.lower())
+
+    def test_runtime_receipt_has_exact_identity_keys(self):
+        ensure = subprocess.run(
+            [str(ROOT / "scripts/ensure-runtime.sh")],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(ensure.returncode, 0, ensure.stderr)
+        cache = ensure.stdout.strip()
+        self.assertTrue(cache.startswith("/tmp/marcopolo-scientific-verifier-"))
+
+        receipt = subprocess.run(
+            [str(Path(cache) / "bin/python"), str(ROOT / "scripts/runtime-receipt.py")],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(receipt.returncode, 0, receipt.stderr)
+        payload = json.loads(receipt.stdout)
+        self.assertEqual(set(payload), {"packages", "python", "runtime_bundle"})
+        self.assertTrue(payload["python"].startswith("3.11."))
+        self.assertEqual(payload["runtime_bundle"], "scientific-verifier-py311-v1")
+        self.assertEqual(set(payload["packages"]), {"numpy", "networkx", "sympy", "scipy"})
+        self.assertTrue(all(payload["packages"].values()))
