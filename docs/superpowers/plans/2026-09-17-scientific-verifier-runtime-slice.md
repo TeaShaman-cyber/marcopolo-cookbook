@@ -43,34 +43,34 @@
 Create `scientific-verifier/tests/test_runtime.py` with tests that require:
 
 ```python
+import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_runtime_contract_files_exist():
-    assert (ROOT / "runtime/python.env").is_file()
-    assert (ROOT / "runtime/requirements.in").is_file()
-    assert (ROOT / "runtime/requirements.lock").is_file()
-    assert (ROOT / "scripts/install-runtime.sh").is_file()
-    assert (ROOT / "scripts/ensure-runtime.sh").is_file()
+class RuntimeContractTests(unittest.TestCase):
+    def test_runtime_contract_files_exist(self):
+        self.assertTrue((ROOT / "runtime/python.env").is_file())
+        self.assertTrue((ROOT / "runtime/requirements.in").is_file())
+        self.assertTrue((ROOT / "runtime/requirements.lock").is_file())
+        self.assertTrue((ROOT / "scripts/install-runtime.sh").is_file())
+        self.assertTrue((ROOT / "scripts/ensure-runtime.sh").is_file())
 
+    def test_requirements_in_has_only_direct_scientific_dependencies(self):
+        rows = [
+            line.strip().lower()
+            for line in (ROOT / "runtime/requirements.in").read_text().splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+        self.assertEqual(rows, ["numpy", "networkx", "sympy", "scipy"])
 
-def test_requirements_in_has_only_direct_scientific_dependencies():
-    rows = [
-        line.strip().lower()
-        for line in (ROOT / "runtime/requirements.in").read_text().splitlines()
-        if line.strip() and not line.lstrip().startswith("#")
-    ]
-    assert rows == ["numpy", "networkx", "sympy", "scipy"]
-
-
-def test_lock_is_hash_pinned():
-    text = (ROOT / "runtime/requirements.lock").read_text()
-    assert "==" in text
-    assert "--hash=sha256:" in text
-    for name in ("numpy", "networkx", "sympy", "scipy"):
-        assert f"{name}==" in text.lower()
+    def test_lock_is_hash_pinned(self):
+        text = (ROOT / "runtime/requirements.lock").read_text()
+        self.assertIn("==", text)
+        self.assertIn("--hash=sha256:", text)
+        for name in ("numpy", "networkx", "sympy", "scipy"):
+            self.assertIn(f"{name}==", text.lower())
 ```
 
 - [ ] **Step 2: Run the tests and observe RED**
@@ -81,7 +81,7 @@ Run:
 python3 -m unittest discover -s scientific-verifier/tests -p 'test_*.py' -v
 ```
 
-Expected: failures because the runtime files do not exist yet.
+Expected: `Ran 3 tests` with failures because the runtime files do not exist yet. Zero discovered tests is a test-runner failure, not RED.
 
 - [ ] **Step 3: Perform one-time compatibility resolution in an isolated temporary venv**
 
