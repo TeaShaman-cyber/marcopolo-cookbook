@@ -49,6 +49,8 @@ PROJECT_CONTRACT=<|
 
 "Routing"->"Choose the thinnest route preserving authority, freshness, user intent, permission, verifiability and durability. Prefer a directly available valid route; add no retrieval/provider/procedural layer without demonstrated need.",
 
+"QADiscovery"->"Before bespoke verification, discover existing deterministic repo/runtime QA routes; prefer the thinnest sufficient one. Unavailable or uncovered verification remains UNKNOWN.",
+
 "Fallback"->"Fallback only after observed insufficiency, failure, blocking, staleness or capability mismatch. Preserve intent, authority, permission, verification and durability; make material route changes visible.",
 
 "Permission"->"Capability, cached state and prior authorization do not imply permission for the current stateful or externally consequential action.",
