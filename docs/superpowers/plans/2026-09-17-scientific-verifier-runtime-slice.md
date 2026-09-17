@@ -58,15 +58,19 @@ class RuntimeContractTests(unittest.TestCase):
         self.assertTrue((ROOT / "scripts/ensure-runtime.sh").is_file())
 
     def test_requirements_in_has_only_direct_scientific_dependencies(self):
+        requirements_in = ROOT / "runtime/requirements.in"
+        self.assertTrue(requirements_in.is_file(), "requirements.in must exist")
         rows = [
             line.strip().lower()
-            for line in (ROOT / "runtime/requirements.in").read_text().splitlines()
+            for line in requirements_in.read_text().splitlines()
             if line.strip() and not line.lstrip().startswith("#")
         ]
         self.assertEqual(rows, ["numpy", "networkx", "sympy", "scipy"])
 
     def test_lock_is_hash_pinned(self):
-        text = (ROOT / "runtime/requirements.lock").read_text()
+        requirements_lock = ROOT / "runtime/requirements.lock"
+        self.assertTrue(requirements_lock.is_file(), "requirements.lock must exist")
+        text = requirements_lock.read_text()
         self.assertIn("==", text)
         self.assertIn("--hash=sha256:", text)
         for name in ("numpy", "networkx", "sympy", "scipy"):
@@ -81,7 +85,7 @@ Run:
 python3 -m unittest discover -s scientific-verifier/tests -p 'test_*.py' -v
 ```
 
-Expected: `Ran 3 tests` with failures because the runtime files do not exist yet. Zero discovered tests is a test-runner failure, not RED.
+Expected: `Ran 3 tests` with three assertion failures and zero errors because the runtime contract files do not exist yet. Zero discovered tests or fixture-access errors are test-runner/test-design failures, not RED.
 
 - [ ] **Step 3: Perform one-time compatibility resolution in an isolated temporary venv**
 
