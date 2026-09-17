@@ -37,6 +37,23 @@ class ProjectContractSourceTest(unittest.TestCase):
         self.assertIn("Workspace RULES govern MarcoPolo runtime mechanics after route selection", text)
         self.assertIn("BLOCK or remain UNKNOWN", text)
 
+    def test_project_contract_fits_project_settings_limit(self):
+        text = CONTRACT.read_text(encoding="utf-8")
+        self.assertLessEqual(len(text), 8000, f"project contract is {len(text)} chars")
+
+    def test_compaction_preserves_reviewed_semantics(self):
+        text = CONTRACT.read_text(encoding="utf-8")
+        self.assertIn("Accepted Git source:", text)
+        self.assertIn("versioned, reviewable, reproducible state", text)
+        self.assertIn("Report unresolved same-concern conflicts", text)
+
+    def test_project_contract_requires_qa_discovery_before_bespoke_verification(self):
+        text = CONTRACT.read_text(encoding="utf-8")
+
+        self.assertIn('"QADiscovery"', text)
+        self.assertIn("discover existing deterministic repo/runtime QA routes", text)
+        self.assertIn("Unavailable or uncovered verification remains UNKNOWN", text)
+
     def test_project_contract_stays_above_runtime_mechanics(self):
         text = CONTRACT.read_text(encoding="utf-8")
 
