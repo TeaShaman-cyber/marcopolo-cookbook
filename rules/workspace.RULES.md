@@ -35,6 +35,23 @@ If Session Search is unavailable or its corpus verification fails, state that
 explicitly. Do not silently present remembered, reconstructed, or other
 retrieved context as if it came from Session Search.
 
+## QA / verifier discovery
+
+Before authoring bespoke verification for repository or runtime work in
+MarcoPolo, inspect project-native check/acceptance entrypoints and the current
+runtime QA/tool inventory first. Prefer the thinnest existing deterministic
+verifier whose scope directly establishes the claim.
+
+Use repository-local check scripts, acceptance runners, linters, validators,
+analyzers, and runtime inventories before reimplementing their semantics. Do
+not install or require a heavier tool merely because it exists when an
+available narrower route is sufficient.
+
+If no available verifier covers the claim, add a bespoke check only for the
+observed gap. An unavailable, unrun, or uncovered verification path is UNKNOWN,
+never PASS. Tool availability or capability does not grant authority or
+permission.
+
 ## Shell dialect
 
 `workspace_shell` command strings may execute through `/bin/sh`, not Bash.

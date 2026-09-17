@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+SOURCE="$ROOT/rules/workspace.RULES.md"
+grep -Fq '## QA / verifier discovery' "$SOURCE"
+grep -Fq 'project-native check/acceptance entrypoints' "$SOURCE"
+grep -Fq 'thinnest existing deterministic' "$SOURCE"
+grep -Fq 'verifier whose scope directly establishes the claim' "$SOURCE"
+grep -Fq 'uncovered verification path is UNKNOWN' "$SOURCE"
+grep -Fq 'never PASS' "$SOURCE"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 TARGET="$TMP/RULES.md"
