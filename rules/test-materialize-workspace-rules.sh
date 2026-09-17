@@ -9,6 +9,7 @@ grep -Fq 'verifier whose scope directly establishes the claim' "$SOURCE"
 grep -Fq 'uncovered verification path is UNKNOWN' "$SOURCE"
 grep -Fq 'never PASS' "$SOURCE"
 grep -Fq 'tools/dev/check' "$SOURCE"
+grep -Fq 'checks to `tools/dev/check` instead of scattering ad-hoc check scripts' "$SOURCE"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 TARGET="$TMP/RULES.md"
