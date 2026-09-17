@@ -46,6 +46,9 @@ Use repository-local check scripts, acceptance runners, linters, validators,
 analyzers, and runtime inventories before reimplementing their semantics. Do
 not install or require a heavier tool merely because it exists when an
 available narrower route is sufficient.
+If a repository provides `tools/dev/check`, use it as the first pre-review QA
+gate before composing bespoke checks; if unavailable or inapplicable, continue
+discovery and do not treat that as PASS.
 
 If no available verifier covers the claim, add a bespoke check only for the
 observed gap. An unavailable, unrun, or uncovered verification path is UNKNOWN,

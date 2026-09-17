@@ -8,6 +8,7 @@ grep -Fq 'thinnest existing deterministic' "$SOURCE"
 grep -Fq 'verifier whose scope directly establishes the claim' "$SOURCE"
 grep -Fq 'uncovered verification path is UNKNOWN' "$SOURCE"
 grep -Fq 'never PASS' "$SOURCE"
+grep -Fq 'tools/dev/check' "$SOURCE"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 TARGET="$TMP/RULES.md"
