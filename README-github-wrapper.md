@@ -11,11 +11,11 @@ Superseded: 2026-08-28
 workspace_shell -> gh / git -> GitHub
 ```
 
-The current route uses ordinary `gh` / `git`, but authorization is scope-separated. The default MarcoPolo OAuth profile is read-capable; explicitly authorized writes use the separate `/workspace/.config/gh-write` CLI OAuth profile via `GH_CONFIG_DIR`. After authorization or runtime changes, check the intended profile with `gh auth status`, run the smallest repository probe, and verify remote state after writes.
+The normal MarcoPolo route uses ordinary `gh` / `git`, with scope-separated authorization. The default MarcoPolo OAuth profile is read-capable; explicitly authorized writes use the separate `/workspace/.config/gh-write` CLI OAuth profile via `GH_CONFIG_DIR`. For bounded current-state inspection, the native ChatGPT GitHub plugin is also an allowed lightweight read route. Native plugin writes are explicit fallbacks only when MarcoPolo transport, quoting, or request-filter mechanics make the already-authorized mutation less safe or needlessly complex. After authorization or runtime changes, check the intended profile, run the smallest repository probe, and verify remote state after writes.
 
 ## When the old wrapper may be considered
 
-Use `wrapper-gh.sh` only after the direct route is observed unavailable, fallback is actually needed, and the wrapper path is freshly re-verified. Its existence on disk is not evidence that it is current.
+Do not select `wrapper-gh.sh` merely because a direct route returned `403` or a quoting-sensitive command failed. First classify the failure. The wrapper may be considered only for verified auth/transport unavailability when current user intent already authorizes the same mutation, the normal governed route and native-plugin fallback are unsuitable, and the wrapper path is freshly re-verified. A semantic, policy, or repository-state rejection is a STOP condition, not permission to retry through the wrapper. Its existence on disk is not evidence that it is current or authorized.
 
 Do not inspect or print credential values while diagnosing either route.
 

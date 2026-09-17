@@ -9,7 +9,7 @@ The goal is to identify **which layer actually failed**, use the smallest safe w
 1. **Assume `workspace_shell` may execute through `/bin/sh`, not Bash.** If Bash syntax matters, invoke `bash -lc` explicitly.
 2. **A MarcoPolo timeout or `502` is an observation/control-plane failure, not proof that the target job failed.** Re-read the target system separately.
 3. **Conversation runtime, MarcoPolo workspace, and GitHub Actions runner are different environments.** Never infer path or package availability across them.
-4. **GitHub read and write paths can have different authority.** Native GitHub readback may work while writes fail; governed `gh-write` in MarcoPolo is the established write fallback.
+4. **GitHub read and write paths can have different authority.** Native ChatGPT GitHub reads are an allowed lightweight current-state route; governed `gh-write` is the normal MarcoPolo write route. Native plugin writes are explicit fallbacks only when MarcoPolo transport, quoting, or request-filter mechanics make the already-authorized mutation less safe or needlessly complex.
 5. **Never infer experiment identity from `GITHUB_SHA` after a launcher checks out another commit.** Pass experiment and launcher identities explicitly.
 6. **Do not trust a successful mutation until exact remote readback.** A stale API response or incomplete Git tree can otherwise make a successful-looking write wrong.
 7. **Do not assume `mcporter`, Node modules, Python packages, or prior virtualenvs persist.** Pin dependencies and record runtime versions in receipts.
@@ -253,15 +253,25 @@ The governed MarcoPolo credential could still perform specific writes.
 
 ```text
 READ
-  native ChatGPT GitHub connector
+  MarcoPolo gh for workspace-local, bulk, or processing-heavy inspection
+  native ChatGPT GitHub plugin for bounded current-state checks
 
 WRITE
-  MarcoPolo governed gh-write
-  GH_CONFIG_DIR=/workspace/.config/gh-write
+  default: MarcoPolo governed gh-write
+           GH_CONFIG_DIR=/workspace/.config/gh-write
+  fallback: native ChatGPT GitHub plugin only when MarcoPolo transport,
+            quoting, or request filtering makes the authorized mutation
+            less safe or needlessly complex
 
 READBACK
-  native ChatGPT GitHub connector
+  use an independently available route when practical
+  prefer a route independent of the writer
 ```
+
+Native plugin capability is not permission. Before any fallback write, current
+user intent must already authorize the mutation. Make the route change visible,
+perform the smallest sufficient mutation, and verify the exact remote
+postcondition.
 
 The native read path can itself become unavailable mid-session even after successful reauthorization. Classify that separately:
 
@@ -314,9 +324,26 @@ If the `(target_type, operation)` tuple does not match the tool primitive, stop 
 
 ## 6. Ordinary `git push` can fail while GitHub API writes still work
 
-Smart-HTTP `git push` from MarcoPolo began returning HTTP `403`, even though issue comments and GitHub API mutations through governed `gh-write` still worked.
+A `git push` HTTP `403` can come from the wrong Git credential profile as well as a real smart-HTTP obstruction. Before treating it as transport failure, verify the cookbook-managed Git helper binding and retry a non-mutating push probe.
 
-### Fallback used successfully
+A smart-HTTP `403` does not by itself authorize another mutation route. First
+classify the failure:
+
+```text
+semantic / policy / state rejection
+  -> STOP
+
+auth / transport / quoting / request-filter obstruction
+  -> fallback may be considered only if current user intent already authorizes
+     the same mutation
+```
+
+Choose the thinnest allowed fallback. A typed native GitHub plugin mutation can
+be preferable when it avoids shell transport risk; the governed Git Database API
+remains a lower-level option when exact Git object construction is actually
+required.
+
+### Historical Git Database fallback used successfully
 
 ```text
 blob(s)
@@ -677,7 +704,7 @@ Never collapse metadata into capability authority.
 | `workspace_shell` timeout | execution window / long command | underlying remote job failed | split calls; re-read target |
 | MarcoPolo `502` | connector/control plane | GitHub Action failed | query GitHub independently |
 | GitHub write `403` | connector/app authority | repository read-only everywhere | use governed `gh-write`; native readback |
-| `git push` `403` | smart-HTTP path | Git Database API cannot write | governed API fallback + exact readback |
+| `git push` `403` | Git credential context or smart-HTTP path | Git Database API cannot write | check default Git helper; dry-run; only then consider fallback |
 | API ref read shows old SHA after write | stale read | write rolled back | fetch/query independently |
 | `origin` missing | no checkout/local remote | remote branch absent | explicit repository URL |
 | valid SHA rejected | shell validation | requested SHA invalid | Bash regex + test |
@@ -815,41 +842,39 @@ Update this README whenever a new MarcoPolo failure mode produces a **reusable w
 
 ---
 
-## 23. `gh auth setup-git` does not make a custom `GH_CONFIG_DIR` magically permanent
+## 23. Default GitHub Git credential binding
 
 ### Observed symptom
 
-A governed push succeeded when invoked as:
-
-```bash
-GH_CONFIG_DIR=/workspace/.config/gh-write git push ...
-```
-
-but a later plain:
-
-```bash
-git fetch origin main
-```
-
-returned GitHub HTTP `403`.
+`gh auth setup-git` installed a Git credential helper that delegated to `gh auth git-credential` without pinning the MarcoPolo write profile. Plain Git therefore depended on whichever `GH_CONFIG_DIR` happened to reach the Git subprocess. A controlled probe showed the read/default profile returning HTTP `403` while the write profile succeeded for the same repository.
 
 ### Root cause class
 
-`gh auth setup-git` configures Git to use the GitHub CLI credential helper, but a custom MarcoPolo `GH_CONFIG_DIR` is process environment. A later Git process that invokes `gh` without that environment can resolve a different/no GitHub CLI credential context.
+`GH_CONFIG_DIR` is process environment, not persistent Git helper state. Remembering to export it in every shell command is fragile and creates avoidable routing mistakes.
 
-### Safe pattern
+### Cookbook-managed default
 
-For governed Git operations in this workspace, bind the configuration explicitly for the command group:
+Install the binding once:
 
 ```bash
-export GH_CONFIG_DIR=/workspace/.config/gh-write
-git fetch origin main
-git push origin main
+/workspace/marcopolo-cookbook/github-git-auth.sh --install
 ```
 
-or prefix each command individually.
+The installer keeps Git's host-specific empty helper entry, which resets inherited generic helpers, and then binds `github.com` directly to:
 
-Do not interpret the resulting unauthenticated/wrong-context `403` as evidence that repository permissions changed until the same operation is retried in the intended governed credential context.
+```text
+GH_CONFIG_DIR=/workspace/.config/gh-write ... gh auth git-credential
+```
+
+Verify without mutation:
+
+```bash
+/workspace/marcopolo-cookbook/github-git-auth.sh --check
+```
+
+After installation, plain `git fetch` / `git pull` / `git push` no longer require a manually exported `GH_CONFIG_DIR`. This changes credential selection only. Permission and authority remain governed by the Project Contract; write-capable credentials are never themselves authorization to mutate an external repository.
+
+If plain Git returns `403`, run `github-git-auth.sh --check` and a non-mutating `git push --dry-run` before classifying the failure as smart-HTTP transport or escalating to another write route.
 
 ## 24. Use local temporary storage as a build/runtime proxy for heavy tool trees
 
