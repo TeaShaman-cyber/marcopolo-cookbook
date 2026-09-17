@@ -1,5 +1,7 @@
 from pathlib import Path
+import os
 import subprocess
+import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -80,14 +82,54 @@ class DevQualityGateContractTest(unittest.TestCase):
         ):
             self.assertIn(marker, text)
 
-    def test_bootstrap_check_reports_installed_versions(self):
-        result = subprocess.run(
-            [str(DEV / "bootstrap.sh"), "--check"],
-            cwd=ROOT,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
+    def test_bootstrap_uses_private_mktemp_staging(self):
+        text = (DEV / "bootstrap.sh").read_text(encoding="utf-8")
+        self.assertIn("mktemp -d", text)
+        self.assertNotIn("theseus-dev-bootstrap.$$", text)
+
+    def test_check_fails_closed_without_baseline(self):
+        text = (DEV / "check").read_text(encoding="utf-8")
+        self.assertIn("baseline ref", text)
+        self.assertIn("exit 2", text)
+
+    def test_check_handles_shebang_shell_entrypoints(self):
+        text = (DEV / "check").read_text(encoding="utf-8")
+        self.assertIn("is_shell_script", text)
+        self.assertIn("head -n 1", text)
+
+    def test_check_redirects_python_bytecode_to_tmp_cache(self):
+        text = (DEV / "check").read_text(encoding="utf-8")
+        self.assertIn("PYTHONPYCACHEPREFIX", text)
+
+    def test_edit_refuses_to_overwrite_existing_init(self):
+        text = (DEV / "edit").read_text(encoding="utf-8")
+        self.assertIn("existing init.lua", text)
+
+    def test_bootstrap_check_reports_installed_versions_from_isolated_fixture(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bindir = Path(tmp)
+            outputs = {
+                "micro": "Version: 2.0.15\n",
+                "ruff": "ruff 0.16.6\n",
+                "shellcheck": "version: 0.11.0\n",
+                "shfmt": "v3.14.0\n",
+            }
+            for name, output in outputs.items():
+                tool = bindir / name
+                tool.write_text(
+                    f"#!/bin/sh\nprintf '%s' '{output}'\n", encoding="utf-8"
+                )
+                tool.chmod(0o755)
+            env = os.environ.copy()
+            env["THESEUS_DEV_BIN"] = str(bindir)
+            result = subprocess.run(
+                [str(DEV / "bootstrap.sh"), "--check"],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         for marker in (
             "micro 2.0.15",

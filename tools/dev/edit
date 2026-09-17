@@ -5,7 +5,14 @@ DEV_BIN=${THESEUS_DEV_BIN:-/workspace/.local/theseus-dev/bin}
 CACHE=${THESEUS_DEV_CACHE:-/tmp/theseus-dev-cache}
 PATH="$DEV_BIN:$PATH"
 export PATH
-export MICRO_CONFIG_HOME=${MICRO_CONFIG_HOME:-$CACHE/micro}
+if [ "${MICRO_CONFIG_HOME+x}" = x ]; then
+	[ ! -e "$MICRO_CONFIG_HOME/init.lua" ] || {
+		printf '%s\n' 'dev-edit: refusing to overwrite existing init.lua in MICRO_CONFIG_HOME' >&2
+		exit 2
+	}
+else
+	export MICRO_CONFIG_HOME="$CACHE/micro"
+fi
 mkdir -p "$MICRO_CONFIG_HOME"
 
 cat >"$MICRO_CONFIG_HOME/init.lua" <<'LUA'

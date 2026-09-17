@@ -46,8 +46,9 @@ esac
 [ "$(uname -s)" = Linux ] || fail "only Linux is supported by this bootstrap"
 [ "$(uname -m)" = x86_64 ] || fail "only Linux x86_64 is supported by this bootstrap"
 
-TMP=${TMPDIR:-/tmp}/theseus-dev-bootstrap.$$
-mkdir -p "$DEST" "$TMP"
+mkdir -p "$DEST"
+umask 077
+TMP=$(mktemp -d "${TMPDIR:-/tmp}/theseus-dev-bootstrap.XXXXXX")
 trap 'rm -rf "$TMP"' EXIT HUP INT TERM
 
 download() {
