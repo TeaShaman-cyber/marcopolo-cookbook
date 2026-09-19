@@ -68,28 +68,26 @@ The gate intentionally does **not** treat stylistic or semantic heuristics as se
 ## Canonical QA contract
 
 `tools/dev/check` is the **canonical first local QA gate** for this repository.
-Run it from the exact revision being evaluated before composing bespoke
-pre-review checks.
+Run it before composing bespoke pre-review checks.
 
-The default invocation is:
+Default invocation:
 
-```sh
-tools/dev/check
-```
+    tools/dev/check
 
-Use `tools/dev/check --all` only for deliberate whole-repository debt
-inspection. The ordinary gate is intentionally changed-file oriented.
+Use `tools/dev/check --all` only for deliberate whole-repository debt inspection.
 
-Record the exact revision when a QA result is used as acceptance evidence. A
-pass on another branch, an older checkout, or a different runtime is not proof
-for the current candidate.
+For ordinary development feedback, the gate intentionally includes committed,
+staged, unstaged, and untracked changed files. When a result is used as durable
+acceptance evidence for a Git revision, run it from a clean worktree on that
+exact revision. If a clean worktree is not possible, record a reproducible
+identity for the complete tested content instead of attributing the result to
+HEAD alone.
 
-The local endpoint covers deterministic repository checks only. Separate
+The local endpoint establishes deterministic repository checks only. Separate
 network/runtime witnesses are still required when a claim depends on GitHub,
 MarcoPolo control-plane behavior, MCP/provider state, or other external
-surfaces. Project metadata is likewise remote coordination state, not something
-this local gate can establish by itself.
+surfaces. Project metadata is remote coordination state and is not established
+by this local gate.
 
 `QA PASS does not authorize` issue closure, migration, PR merge, release,
-Project mutation, or any other consequential lifecycle transition. Those steps
-remain subject to the repository lifecycle policy and exact remote readback.
+Project mutation, or any other consequential lifecycle transition.

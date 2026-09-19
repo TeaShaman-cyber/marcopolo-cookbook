@@ -1,61 +1,61 @@
-# MarcoPolo repository lifecycle
+# MarcoPolo repository lifecycle v0.1
 
-This policy defines how repository work moves from an active change to a durable
-terminal disposition. It applies to MarcoPolo cookbook issues, pull requests,
-GitHub Project items, migrations to other Theseus repositories, and repository
-release/publication work when a release stage is applicable.
+This is a minimum viable lifecycle policy, not a complete governance framework.
+Its purpose is to keep active work, evidence, authority, and terminal disposition
+separate with the smallest set of rules justified by observed project failures.
 
 GitHub Issues and Projects are coordination and evidence surfaces. They do not
 grant permission or acceptance authority.
 
-## Lifecycle states
+## Policy evolution
 
-Use these terms for durable disposition:
+Evolve this policy in small, reviewable batches. Add a rule only when current
+evidence shows a recurring failure class or a concrete uncovered lifecycle gap.
+Prefer reversible increments, fast feedback, and the existing QA path over
+pre-designing hypothetical future process.
 
-```text
-ACTIVE / PARKED / MIGRATED / SUPERSEDED / COMPLETED / HISTORICAL / UNKNOWN
-```
+Do not keep a pull request open merely to solve lifecycle cases that have not
+been observed. Record a follow-up issue when a real gap appears and iterate.
 
-- **ACTIVE** — current work with a present owner and next acceptance step.
-- **PARKED** — intentionally not active; evidence and a safe resume point remain.
-- **MIGRATED** — active ownership moved to another canonical issue/repository.
-- **SUPERSEDED** — a newer design, branch, issue, or implementation replaces it.
-- **COMPLETED** — the declared acceptance criteria and postconditions were met.
-- **HISTORICAL** — retained as provenance/evidence, not as current work.
-- **UNKNOWN** — current ownership, acceptance, or postcondition is not established.
+## Durable states
 
-Project state is a projection of canonical issue/PR disposition, not the source
-of authority. A Project item must not be used to infer permission to mutate,
-merge, release, or close another object.
+Use these terms when a durable disposition is needed:
 
-## Normal work lifecycle
+    ACTIVE / PARKED / MIGRATED / SUPERSEDED / COMPLETED / HISTORICAL / UNKNOWN
 
-The shared lifecycle is:
+- ACTIVE: current work with a present owner and next acceptance step.
+- PARKED: intentionally inactive, with evidence and a safe resume point.
+- MIGRATED: active ownership moved to another canonical issue/repository.
+- SUPERSEDED: a newer design, branch, issue, or implementation replaces it.
+- COMPLETED: declared acceptance criteria and postconditions were met.
+- HISTORICAL: retained as provenance, not current work.
+- UNKNOWN: current ownership, acceptance, or postcondition is not established.
 
-```text
-implementation / research slice
-  -> local deterministic QA
-  -> domain/runtime verification when required
-  -> independent review when required
-  -> explicit acceptance decision
-  -> promotion / merge
-  -> release / publication when applicable
-  -> exact remote readback
-  -> terminal disposition
-```
+Project state is a projection of canonical issue/PR disposition, not authority.
 
-The stages are deliberately separate.
+## Normal lifecycle
 
-```text
-QA PASS != acceptance authority
-review approval != merge permission
-merge capability != release permission
-release completion != scientific acceptance
-```
+Use only the stages that are relevant to the artifact:
 
-The canonical first local QA gate for this repository is documented in
-`tools/dev/README.md`. Network, runtime, provider, GitHub Project, and other
-external witnesses remain separate verification layers.
+    implementation / research slice
+      -> local deterministic QA
+      -> domain/runtime verification when required
+      -> independent review when required
+      -> explicit acceptance decision
+      -> promotion / merge when authorized
+      -> release / publication when applicable and authorized
+      -> exact remote readback
+      -> terminal disposition
+
+The boundaries remain explicit:
+
+    QA PASS != acceptance authority
+    review approval != merge permission
+    merge capability != release permission
+    release completion != scientific acceptance
+
+The canonical first local QA gate is documented in tools/dev/README.md.
+External runtime, provider, GitHub, and Project checks remain separate witnesses.
 
 ## Migration lifecycle
 
@@ -64,75 +64,57 @@ of active work. migration != acceptance.
 
 Use this order:
 
-```text
-target owner
-  -> target-side migration receipt
-  -> preserve unresolved debt
-  -> Project transfer
-  -> source disposition
-  -> exact remote readback
-```
+    target owner
+      -> preserve unresolved debt
+      -> target-side migration receipt containing that debt
+      -> source disposition
+      -> Project synchronization, only when that separate mutation is authorized
+      -> exact remote readback
 
-The target-side migration receipt must identify the source issue/PR and preserve
-material unresolved review, QA, security, concurrency, portability, or research
-debt. Do not close the source first and reconstruct the handoff later.
+Collect material unresolved review, QA, security, concurrency, portability, or
+research debt before creating the target-side migration receipt, or atomically
+as part of that receipt. Do not close the source first and reconstruct the
+handoff later.
 
-A migrated source may be closed as not planned/superseded when the work is not
-completed in that source. Historical comments and exact branch/commit identities
-remain provenance.
+Project synchronization follows canonical source disposition; it must not lead
+or redefine it. If Project mutation is not authorized or unavailable, leave the
+canonical source correct and report Project drift instead of assuming permission.
+
+A migrated source may be closed as not planned/superseded when the work was not
+completed there. Historical comments and exact branch/commit identities remain
+provenance.
 
 ## Pull-request disposition
 
-An open PR should have one current role:
+An open PR should be one of:
 
-- active implementation/review candidate;
-- intentionally parked experiment with an explicit resume boundary;
-- historical/superseded branch awaiting archival.
+- an active implementation/review candidate;
+- an intentionally parked experiment with an explicit resume boundary;
+- a historical/superseded branch awaiting archival.
 
-Closing an unmerged PR does not mean its implementation was accepted. Record the
-exact head SHA and any unresolved review findings before archival when those
-facts matter to future work.
+Closing an unmerged PR does not mean its implementation was accepted. Preserve
+exact head identity and material unresolved review findings before archival when
+those facts matter to future work.
 
 Do not merge stale experiments merely to make Project state look clean.
-
-## Issue and Project synchronization
-
-After a canonical issue or PR transition, update the dedicated MarcoPolo
-Project so the coordination view does not drift from repository truth.
-
-Examples:
-
-- ACTIVE issue -> Project Status `In Progress`;
-- queued active work -> `Todo`;
-- COMPLETED / MIGRATED / SUPERSEDED / HISTORICAL source -> `Done`, with the
-  terminal meaning recorded in the canonical issue/PR;
-- PARKED work may remain open, but its parked state must be explicit in the
-  issue and Project maturity/status must not imply current execution.
-
-Project state is a projection; canonical issue/PR evidence wins on conflict.
 
 ## Verification and readback
 
 Local deterministic QA proves only the invariants it checks. It does not prove
-remote GitHub state.
+remote GitHub state or lifecycle authority.
 
 Important lifecycle mutations require exact remote readback appropriate to the
-object:
+object: issue state/reason, PR state/head/mergedAt, Project item fields when the
+Project was authorized to change, migration target receipt, and release identity
+when release applies.
 
-- issue: state and state reason;
-- pull request: state, exact head, and `mergedAt`;
-- Project: item identity and relevant field values;
-- migration: target-side receipt exists before terminal source disposition;
-- release/publication: exact tag/release/artifact identity where applicable.
-
-Executor self-report alone is insufficient when remote readback is available.
+Executor self-report alone is insufficient when independent readback exists.
 
 ## Automation boundary
 
 Automate repetitive checks and already-authorized mechanics, not judgment,
 permission, or consequential promotion.
 
-A future roadmap-graph verifier may report deterministic
-`PASS / DRIFT / UNAVAILABLE` results, but must remain read-only. Its result may
-identify lifecycle drift; it does not authorize closing issues, moving work,
-merging PRs, or publishing releases.
+A roadmap verifier may report PASS / DRIFT / UNAVAILABLE, but remains read-only.
+Its result can identify lifecycle drift; it cannot authorize closing issues,
+moving work, merging PRs, or publishing releases.

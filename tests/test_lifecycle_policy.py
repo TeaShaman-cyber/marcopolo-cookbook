@@ -13,6 +13,8 @@ class LifecyclePolicyContractTest(unittest.TestCase):
         text = LIFECYCLE.read_text(encoding="utf-8")
         for marker in (
             "ACTIVE / PARKED / MIGRATED / SUPERSEDED / COMPLETED / HISTORICAL / UNKNOWN",
+            "minimum viable lifecycle policy",
+            "small, reviewable batches",
             "QA PASS != acceptance authority",
             "migration != acceptance",
             "Project state is a projection",
@@ -29,10 +31,10 @@ class LifecyclePolicyContractTest(unittest.TestCase):
         )[0]
         markers = (
             "target owner",
-            "target-side migration receipt",
             "preserve unresolved debt",
-            "Project transfer",
+            "target-side migration receipt",
             "source disposition",
+            "Project synchronization",
             "exact remote readback",
         )
         positions = [migration.index(marker) for marker in markers]
@@ -42,12 +44,21 @@ class LifecyclePolicyContractTest(unittest.TestCase):
         text = DEV_README.read_text(encoding="utf-8")
         for marker in (
             "canonical first local QA gate",
-            "exact revision",
+            "clean worktree",
+            "identity for the complete tested content",
             "QA PASS does not authorize",
             "network/runtime witnesses",
             "Project metadata",
         ):
             self.assertIn(marker, text)
+
+    def test_project_sync_is_conditional_and_follows_source_disposition(self):
+        text = LIFECYCLE.read_text(encoding="utf-8")
+        migration = text.split("## Migration lifecycle", 1)[1].split(
+            "## Pull-request disposition", 1
+        )[0]
+        self.assertIn("only when that separate mutation is authorized", migration)
+        self.assertLess(migration.index("source disposition"), migration.index("Project synchronization"))
 
     def test_root_readme_links_lifecycle_policy_and_canonical_qa(self):
         text = ROOT_README.read_text(encoding="utf-8")
