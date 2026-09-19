@@ -33,12 +33,22 @@ class LifecyclePolicyContractTest(unittest.TestCase):
             "target owner",
             "preserve unresolved debt",
             "target-side migration receipt",
+            "exact target-receipt readback",
             "source disposition",
             "Project synchronization",
-            "exact remote readback",
+            "exact final readback",
         )
         positions = [migration.index(marker) for marker in markers]
         self.assertEqual(positions, sorted(positions))
+
+    def test_terminal_disposition_precedes_final_readback(self):
+        text = LIFECYCLE.read_text(encoding="utf-8")
+        normal = text.split("## Normal lifecycle", 1)[1].split(
+            "## Migration lifecycle", 1
+        )[0]
+        self.assertLess(
+            normal.index("terminal disposition"), normal.index("exact remote readback")
+        )
 
     def test_dev_check_is_documented_as_first_local_gate_with_bounded_claim(self):
         text = DEV_README.read_text(encoding="utf-8")

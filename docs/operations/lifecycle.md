@@ -44,8 +44,8 @@ Use only the stages that are relevant to the artifact:
       -> explicit acceptance decision
       -> promotion / merge when authorized
       -> release / publication when applicable and authorized
-      -> exact remote readback
       -> terminal disposition
+      -> exact remote readback
 
 The boundaries remain explicit:
 
@@ -67,14 +67,15 @@ Use this order:
     target owner
       -> preserve unresolved debt
       -> target-side migration receipt containing that debt
+      -> exact target-receipt readback
       -> source disposition
       -> Project synchronization, only when that separate mutation is authorized
-      -> exact remote readback
+      -> exact final readback
 
 Collect material unresolved review, QA, security, concurrency, portability, or
 research debt before creating the target-side migration receipt, or atomically
-as part of that receipt. Do not close the source first and reconstruct the
-handoff later.
+as part of that receipt. Verify the persisted target receipt before disposing
+the source. Do not close the source first and reconstruct the handoff later.
 
 Project synchronization follows canonical source disposition; it must not lead
 or redefine it. If Project mutation is not authorized or unavailable, leave the
