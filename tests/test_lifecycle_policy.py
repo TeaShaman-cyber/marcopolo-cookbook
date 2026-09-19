@@ -58,7 +58,10 @@ class LifecyclePolicyContractTest(unittest.TestCase):
             "## Pull-request disposition", 1
         )[0]
         self.assertIn("only when that separate mutation is authorized", migration)
-        self.assertLess(migration.index("source disposition"), migration.index("Project synchronization"))
+        self.assertLess(
+            migration.index("source disposition"),
+            migration.index("Project synchronization"),
+        )
 
     def test_root_readme_links_lifecycle_policy_and_canonical_qa(self):
         text = ROOT_README.read_text(encoding="utf-8")
