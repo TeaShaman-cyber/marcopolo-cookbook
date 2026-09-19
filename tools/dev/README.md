@@ -63,3 +63,31 @@ The default gate is intentionally conservative:
 Ruff cache lives under `/tmp/theseus-dev-cache/ruff`.
 
 The gate intentionally does **not** treat stylistic or semantic heuristics as security failures. More opinionated rules can be evaluated later from measured signal rather than enabled wholesale.
+
+
+## Canonical QA contract
+
+`tools/dev/check` is the **canonical first local QA gate** for this repository.
+Run it before composing bespoke pre-review checks.
+
+Default invocation:
+
+    tools/dev/check
+
+Use `tools/dev/check --all` only for deliberate whole-repository debt inspection.
+
+For ordinary development feedback, the gate intentionally includes committed,
+staged, unstaged, and untracked changed files. When a result is used as durable
+acceptance evidence for a Git revision, run it from a clean worktree on that
+exact revision. If a clean worktree is not possible, record a reproducible
+identity for the complete tested content instead of attributing the result to
+HEAD alone.
+
+The local endpoint establishes deterministic repository checks only. Separate
+network/runtime witnesses are still required when a claim depends on GitHub,
+MarcoPolo control-plane behavior, MCP/provider state, or other external
+surfaces. Project metadata is remote coordination state and is not established
+by this local gate.
+
+`QA PASS does not authorize` issue closure, migration, PR merge, release,
+Project mutation, or any other consequential lifecycle transition.

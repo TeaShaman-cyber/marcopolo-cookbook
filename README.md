@@ -29,6 +29,7 @@ A path, dependency, or artifact observed in one runtime is not assumed to exist 
 - [MCPJam CLI workbench](mcpjam-cli/README.md) — independent MCP transport/protocol diagnostics, probes, and Agent Skills inspection.
 - [Search helpers](search/README.md) — lightweight search tooling used in the workspace.
 - [Lightweight development gate](tools/dev/README.md) — pinned standalone editor/linters with NFS-light caches and changed-file pre-Codex checks.
+- [Repository lifecycle](docs/operations/lifecycle.md) — issue/PR/Project disposition, migration, acceptance, release, and exact-readback boundaries; `tools/dev/check` is the canonical first local QA gate.
 - [Jester forum notes](jester-forum/README.md) — bounded forum workflow notes.
 
 Additional top-level scripts provide GitHub/wiki wrappers and access checks used by the workspace.
