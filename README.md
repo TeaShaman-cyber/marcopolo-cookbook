@@ -28,7 +28,8 @@ A path, dependency, or artifact observed in one runtime is not assumed to exist 
 - [mcporter workbench](mcporter/README.md) — bounded MCP client setup, inventory, probes, and acceptance checks.
 - [MCPJam CLI workbench](mcpjam-cli/README.md) — independent MCP transport/protocol diagnostics, probes, and Agent Skills inspection.
 - [Search helpers](search/README.md) — lightweight search tooling used in the workspace.
-- [Lightweight development gate](tools/dev/README.md) — pinned standalone editor/linters with NFS-light caches and changed-file pre-Codex checks.
+- [Lightweight development gate](tools/dev/README.md) — pinned standalone editor/linters with NFS-light caches and changed-file deterministic local QA.
+- [Verification ladder](docs/operations/verification-ladder.md) — L0 MarcoPolo fast feedback, L1 hosted CI, L2 Codespace heavy debugging, and the learning loop that promotes recurring findings into executable checks.
 - [Repository lifecycle](docs/operations/lifecycle.md) — issue/PR/Project disposition, migration, acceptance, release, and exact-readback boundaries; `tools/dev/check` is the canonical first local QA gate.
 - [Jester forum notes](jester-forum/README.md) — bounded forum workflow notes.
 
