@@ -6,12 +6,13 @@ ROOT = Path(__file__).resolve().parents[1]
 CANONICAL = ROOT / ".github" / "workflows" / "reusable-canonical-qa.yml"
 HEAVY = ROOT / ".github" / "workflows" / "reusable-heavy-python.yml"
 PROPERTY = ROOT / ".github" / "workflows" / "reusable-property-test.yml"
+MUTATION = ROOT / ".github" / "workflows" / "reusable-mutation-test.yml"
 LADDER = ROOT / "docs" / "operations" / "verification-ladder.md"
 
 
 class ReusableCiTemplateContractTest(unittest.TestCase):
     def test_templates_exist_and_are_workflow_call_only(self):
-        for path in (CANONICAL, HEAVY, PROPERTY):
+        for path in (CANONICAL, HEAVY, PROPERTY, MUTATION):
             with self.subTest(path=path.name):
                 self.assertTrue(path.is_file())
                 text = path.read_text()
@@ -23,7 +24,7 @@ class ReusableCiTemplateContractTest(unittest.TestCase):
 
     def test_templates_are_read_only_and_action_revisions_are_pinned(self):
         sha_use = re.compile(r"uses:\s+[^@\s]+@[0-9a-f]{40}$", re.MULTILINE)
-        for path in (CANONICAL, HEAVY, PROPERTY):
+        for path in (CANONICAL, HEAVY, PROPERTY, MUTATION):
             with self.subTest(path=path.name):
                 text = path.read_text()
                 self.assertIn("permissions:\n  contents: read", text)
@@ -34,7 +35,7 @@ class ReusableCiTemplateContractTest(unittest.TestCase):
                     self.assertRegex(line.strip(), sha_use)
 
     def test_checkout_does_not_persist_credentials(self):
-        for path in (CANONICAL, HEAVY, PROPERTY):
+        for path in (CANONICAL, HEAVY, PROPERTY, MUTATION):
             with self.subTest(path=path.name):
                 text = path.read_text()
                 checkout = text.split("uses: actions/checkout@", 1)[1].split(
@@ -43,7 +44,7 @@ class ReusableCiTemplateContractTest(unittest.TestCase):
                 self.assertIn("persist-credentials: false", checkout)
 
     def test_setup_python_uses_action_owned_hyphenated_input_name(self):
-        for path in (CANONICAL, HEAVY, PROPERTY):
+        for path in (CANONICAL, HEAVY, PROPERTY, MUTATION):
             with self.subTest(path=path.name):
                 text = path.read_text()
                 setup = text.split("uses: actions/setup-python@", 1)[1].split(
@@ -53,7 +54,7 @@ class ReusableCiTemplateContractTest(unittest.TestCase):
                 self.assertNotIn("python_version:", setup)
 
     def test_acceptance_templates_do_not_soften_failures(self):
-        for path in (CANONICAL, HEAVY, PROPERTY):
+        for path in (CANONICAL, HEAVY, PROPERTY, MUTATION):
             with self.subTest(path=path.name):
                 self.assertNotIn("continue-on-error", path.read_text())
 
@@ -62,7 +63,7 @@ class ReusableCiTemplateContractTest(unittest.TestCase):
             "github.event.pull_request.head.repo.full_name || github.repository"
         )
         expected_sha = "github.event.pull_request.head.sha || github.sha"
-        for path in (CANONICAL, HEAVY, PROPERTY):
+        for path in (CANONICAL, HEAVY, PROPERTY, MUTATION):
             with self.subTest(path=path.name):
                 text = path.read_text()
                 self.assertIn(expected_repo, text)
@@ -77,6 +78,7 @@ class ReusableCiTemplateContractTest(unittest.TestCase):
             (CANONICAL, "canonical-qa"),
             (HEAVY, "heavy-python"),
             (PROPERTY, "property-test"),
+            (MUTATION, "mutation-test"),
         ):
             with self.subTest(path=path.name):
                 text = path.read_text()
@@ -120,7 +122,7 @@ class ReusableCiTemplateContractTest(unittest.TestCase):
 
     def test_workflow_input_identifiers_are_safe_for_dot_notation(self):
         bad = re.compile(r"inputs\.[A-Za-z_][A-Za-z0-9_]*-[A-Za-z0-9_-]+")
-        for path in (CANONICAL, HEAVY, PROPERTY):
+        for path in (CANONICAL, HEAVY, PROPERTY, MUTATION):
             with self.subTest(path=path.name):
                 self.assertIsNone(bad.search(path.read_text()))
 
@@ -128,6 +130,7 @@ class ReusableCiTemplateContractTest(unittest.TestCase):
         self.assertIn("timeout-minutes: 15", CANONICAL.read_text())
         self.assertIn("timeout-minutes: 20", HEAVY.read_text())
         self.assertIn("timeout-minutes: 15", PROPERTY.read_text())
+        self.assertIn("timeout-minutes: 30", MUTATION.read_text())
 
     def test_canonical_profile_calls_repository_owned_qa(self):
         text = CANONICAL.read_text()
@@ -159,6 +162,21 @@ class ReusableCiTemplateContractTest(unittest.TestCase):
         self.assertIn("missing property-test endpoint", text)
         self.assertIn("PROPERTY_TEST_RUNTIME", text)
         self.assertNotIn("hypothesis", text.lower())
+        self.assertNotIn("continue-on-error", text)
+
+    def test_mutation_profile_requires_caller_owned_hash_lock_endpoint_and_receipt(
+        self,
+    ):
+        text = MUTATION.read_text()
+        self.assertIn('default: "requirements/ci-mutation.txt"', text)
+        self.assertIn('default: "tools/ci/mutation-test"', text)
+        self.assertIn("--require-hashes", text)
+        self.assertIn("missing mutation-test lock", text)
+        self.assertIn("missing mutation-test endpoint", text)
+        self.assertIn("MUTATION_TEST_RECEIPT", text)
+        self.assertIn("MUTATION_TEST_RECEIPT_MISSING", text)
+        self.assertIn("MUTATION_TEST_RUNTIME", text)
+        self.assertNotIn("mutmut", text.lower())
         self.assertNotIn("continue-on-error", text)
 
     def test_ladder_separates_local_ci_and_codespace_roles(self):
