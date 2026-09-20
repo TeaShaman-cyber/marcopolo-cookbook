@@ -1,0 +1,72 @@
+name: Reusable heavy Python analysis
+
+"on":
+  workflow_call:
+    inputs:
+      python_version:
+        description: Python version for hosted heavy analysis
+        required: false
+        type: string
+        default: "3.11"
+      requirements_file:
+        description: Caller-owned hash-pinned heavy-analysis lock
+        required: false
+        type: string
+        default: "requirements/ci-heavy.txt"
+      analysis_endpoint:
+        description: Caller-owned heavy analysis script path
+        required: false
+        type: string
+        default: "tools/ci/heavy-python"
+
+permissions:
+  contents: read
+
+jobs:
+  heavy-python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout caller repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+
+      - name: Validate caller heavy-analysis contract
+        env:
+          REQUIREMENTS_FILE: ${{ inputs.requirements_file }}
+          ANALYSIS_ENDPOINT: ${{ inputs.analysis_endpoint }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "$REQUIREMENTS_FILE" || {
+            echo "missing heavy-analysis lock: $REQUIREMENTS_FILE" >&2
+            exit 2
+          }
+          test -f "$ANALYSIS_ENDPOINT" || {
+            echo "missing heavy-analysis endpoint: $ANALYSIS_ENDPOINT" >&2
+            exit 2
+          }
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python_version: ${{ inputs.python_version }}
+          cache: pip
+          cache-dependency-path: ${{ inputs.requirements_file }}
+
+      - name: Install caller-pinned analysis tools
+        env:
+          REQUIREMENTS_FILE: ${{ inputs.requirements_file }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check --require-hashes -r "$REQUIREMENTS_FILE"
+
+      - name: Run caller heavy-analysis endpoint
+        env:
+          ANALYSIS_ENDPOINT: ${{ inputs.analysis_endpoint }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash "$ANALYSIS_ENDPOINT"
