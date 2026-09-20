@@ -91,3 +91,10 @@ by this local gate.
 
 `QA PASS does not authorize` issue closure, migration, PR merge, release,
 Project mutation, or any other consequential lifecycle transition.
+
+If required Codex review is explicitly refused because the code-review quota is
+exhausted, record `CODEX_REVIEW_BLOCKED_QUOTA`. The local QA result remains valid
+for the revision it tested, but it does not satisfy or replace the missing
+independent-review gate. Continue only non-promotional work that does not depend
+on that review outcome until the review can be reprobed or the acceptance policy
+is explicitly changed by authorized current intent.

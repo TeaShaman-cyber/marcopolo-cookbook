@@ -57,6 +57,22 @@ The boundaries remain explicit:
 The canonical first local QA gate is documented in tools/dev/README.md.
 External runtime, provider, GitHub, and Project checks remain separate witnesses.
 
+### Independent-review availability states
+
+When an independent Codex review is required, keep provider availability separate
+from the review outcome. Use `CODEX_REVIEW_BLOCKED_QUOTA` when the provider
+explicitly refuses the review because the code-review usage quota is exhausted.
+
+`CODEX_REVIEW_BLOCKED_QUOTA` means the review did not complete. It is neither a
+clean review nor a substantive review failure. Deterministic local QA, issue and
+backlog work, design work, and other non-promotional evidence gathering may
+continue, but a merge or release gate that explicitly requires Codex exact-head
+review remains unsatisfied. Do not silently substitute QA PASS for the missing
+review and do not accumulate a long dependent stack of unreviewed implementation
+PRs merely to route around the quota. Reprobe when review capability becomes
+available, or change the acceptance policy only through an explicit authorized
+decision.
+
 ## Migration lifecycle
 
 Migration is used when another repository or issue is the narrower current owner

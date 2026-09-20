@@ -62,6 +62,20 @@ class LifecyclePolicyContractTest(unittest.TestCase):
         ):
             self.assertIn(marker, text)
 
+    def test_codex_quota_block_is_not_treated_as_review_outcome(self):
+        lifecycle = LIFECYCLE.read_text(encoding="utf-8")
+        dev = DEV_README.read_text(encoding="utf-8")
+        for marker in (
+            "CODEX_REVIEW_BLOCKED_QUOTA",
+            "clean review nor a substantive review failure",
+            "merge or release gate",
+            "remains unsatisfied",
+            "explicit authorized",
+        ):
+            self.assertIn(marker, lifecycle)
+        self.assertIn("CODEX_REVIEW_BLOCKED_QUOTA", dev)
+        self.assertIn("does not satisfy or replace the missing", dev)
+
     def test_project_sync_is_conditional_and_follows_source_disposition(self):
         text = LIFECYCLE.read_text(encoding="utf-8")
         migration = text.split("## Migration lifecycle", 1)[1].split(
