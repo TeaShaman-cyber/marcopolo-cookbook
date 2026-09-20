@@ -8,11 +8,11 @@ name: Reusable dependency security
         required: false
         type: string
         default: "3.11"
-      analysis_endpoint:
-        description: Repository-owned dependency-security endpoint
+      inputs_file:
+        description: Caller-owned dependency-security input manifest
         required: false
         type: string
-        default: "tools/ci/dependency-security"
+        default: "config/dependency-security.inputs"
 
 permissions:
   contents: read
@@ -65,27 +65,30 @@ jobs:
         with:
           python-version: ${{ inputs.python_version }}
 
-      - name: Validate caller dependency-security contract
+      - name: Validate caller dependency inputs
         env:
-          ANALYSIS_ENDPOINT: ${{ inputs.analysis_endpoint }}
+          DEPENDENCY_INPUTS: ${{ inputs.inputs_file }}
         shell: bash
         run: |
           set -euo pipefail
-          test -f "$ANALYSIS_ENDPOINT" || {
-            echo "missing dependency-security endpoint: $ANALYSIS_ENDPOINT" >&2
+          test -f "$DEPENDENCY_INPUTS" || {
+            echo "missing dependency-security inputs: $DEPENDENCY_INPUTS" >&2
             exit 2
           }
 
-      - name: Run dependency-security endpoint and emit receipt
+      - name: Run shared dependency-security witness
+        uses: TeaShaman-cyber/marcopolo-cookbook/.github/actions/dependency-security@28ca86bf93a80e37361f171f32080892be8c6ba8
+        with:
+          inputs-file: ${{ inputs.inputs_file }}
+          receipt-path: ${{ runner.temp }}/dependency-security-receipt.json
+
+      - name: Emit dependency-security receipt
+        if: always()
         env:
-          ANALYSIS_ENDPOINT: ${{ inputs.analysis_endpoint }}
           DEPENDENCY_SECURITY_RECEIPT: ${{ runner.temp }}/dependency-security-receipt.json
         shell: bash
         run: |
-          set +e
-          python "$ANALYSIS_ENDPOINT"
-          code=$?
-          set -e
+          set -euo pipefail
           if [ -f "$DEPENDENCY_SECURITY_RECEIPT" ]; then
             printf '%s\n' '--- dependency-security receipt ---'
             cat "$DEPENDENCY_SECURITY_RECEIPT"
@@ -93,4 +96,3 @@ jobs:
             echo 'DEPENDENCY_SECURITY_RECEIPT_MISSING' >&2
             exit 4
           fi
-          exit "$code"

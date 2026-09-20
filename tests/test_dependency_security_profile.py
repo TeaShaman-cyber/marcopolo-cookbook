@@ -28,6 +28,19 @@ class DependencySecurityProfileContractTest(unittest.TestCase):
         self.assertIn("dependency-security-receipt.json", text)
         self.assertIn("DEPENDENCY_SECURITY_RECEIPT_MISSING", text)
         self.assertIn('cat "$DEPENDENCY_SECURITY_RECEIPT"', text)
+        self.assertIn("if: always()", text)
+
+    def test_reusable_profile_pins_shared_action_and_caller_owns_only_inputs(self):
+        text = REUSABLE.read_text()
+        self.assertIn(
+            "uses: TeaShaman-cyber/marcopolo-cookbook/.github/actions/"
+            "dependency-security@28ca86bf93a80e37361f171f32080892be8c6ba8",
+            text,
+        )
+        self.assertIn("inputs_file:", text)
+        self.assertIn('default: "config/dependency-security.inputs"', text)
+        self.assertNotIn("analysis_endpoint:", text)
+        self.assertNotIn("tools/ci/dependency-security", text)
 
     def test_dependency_inputs_are_explicit_and_do_not_scan_worktrees(self):
         rows = [
