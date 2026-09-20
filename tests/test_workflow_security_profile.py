@@ -22,12 +22,24 @@ class WorkflowSecurityProfileContractTest(unittest.TestCase):
         self.assertNotIn("continue-on-error", text)
         self.assertNotIn("secrets:", text)
 
-    def test_consumer_is_advisory_surface_and_calls_local_exact_commit_profile(self):
+    def test_consumer_is_advisory_surface_and_pins_promoted_profile(self):
         text = CONSUMER.read_text()
         self.assertIn("pull_request:", text)
         self.assertIn("workflow_dispatch:", text)
         self.assertNotIn("push:", text)
-        self.assertIn("uses: ./.github/workflows/reusable-workflow-security.yml", text)
+        expected = (
+            "uses: TeaShaman-cyber/marcopolo-cookbook/.github/workflows/"
+            "reusable-workflow-security.yml@fe6a6b1f5e39cc5e9dfe6b580fd92f765e4af265"
+        )
+        self.assertIn(expected, text)
+        self.assertNotIn(
+            "uses: ./.github/workflows/reusable-workflow-security.yml", text
+        )
+        self.assertNotIn(
+            "uses: $/.github/workflows/reusable-workflow-security.yml", text
+        )
+        self.assertNotIn("@main", text)
+        self.assertNotRegex(text, r"reusable-workflow-security\.yml@v\d+")
         self.assertIn("permissions:\n  contents: read", text)
 
     def test_endpoint_is_valid_posix_shell_and_explicitly_offline(self):

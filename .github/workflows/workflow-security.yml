@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   workflow-security:
-    uses: ./.github/workflows/reusable-workflow-security.yml
+    uses: TeaShaman-cyber/marcopolo-cookbook/.github/workflows/reusable-workflow-security.yml@fe6a6b1f5e39cc5e9dfe6b580fd92f765e4af265
     with:
       python_version: "3.11"
       analysis_endpoint: tools/ci/workflow-security
