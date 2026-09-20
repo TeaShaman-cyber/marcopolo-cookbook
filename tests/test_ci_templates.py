@@ -56,20 +56,40 @@ class ReusableCiTemplateContractTest(unittest.TestCase):
             with self.subTest(path=path.name):
                 self.assertNotIn("continue-on-error", path.read_text())
 
-    def test_templates_emit_exact_execution_identity(self):
+    def test_templates_bind_checkout_to_explicit_event_source(self):
+        expected_repo = (
+            "github.event.pull_request.head.repo.full_name || github.repository"
+        )
+        expected_sha = "github.event.pull_request.head.sha || github.sha"
+        for path in (CANONICAL, HEAVY):
+            with self.subTest(path=path.name):
+                text = path.read_text()
+                self.assertIn(expected_repo, text)
+                self.assertIn(expected_sha, text)
+                self.assertIn('checkout_sha="$(git rev-parse HEAD)"', text)
+                self.assertIn("QA_SOURCE_MISMATCH", text)
+                self.assertIn(r"verification_source_sha=%s\n", text)
+                self.assertIn(r"verification_checkout_sha=%s\n", text)
+
+    def test_templates_emit_separate_event_source_and_caller_workflow_identity(self):
         for path, profile in ((CANONICAL, "canonical-qa"), (HEAVY, "heavy-python")):
             with self.subTest(path=path.name):
                 text = path.read_text()
                 self.assertIn(f"VERIFICATION_PROFILE: {profile}", text)
                 for marker in (
-                    "github.repository",
-                    "github.sha",
-                    "github.run_id",
-                    "github.run_attempt",
-                    "github.workflow_ref",
-                    "github.workflow_sha",
+                    "verification_event_repository",
+                    "verification_event_sha",
+                    "verification_source_repository",
+                    "verification_source_sha",
+                    "verification_checkout_sha",
+                    "verification_run_id",
+                    "verification_run_attempt",
+                    "verification_caller_workflow_ref",
+                    "verification_caller_workflow_sha",
                 ):
                     self.assertIn(marker, text)
+                self.assertNotIn("verification_workflow_ref=", text)
+                self.assertNotIn("verification_workflow_sha=", text)
 
     def test_heavy_profile_preserves_interrupt_and_termination_semantics(self):
         text = HEAVY.read_text()

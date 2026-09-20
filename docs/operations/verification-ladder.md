@@ -36,6 +36,9 @@ repository decision; the shared workflow must not silently add a new lint policy
 Cross-repository QA history adds four operational rules:
 
 - checkout in read-only QA uses `persist-credentials: false`;
+- an acceptance profile binds the checked-out source explicitly: for pull requests
+  the source is the PR head repository + head SHA, while `github.sha` may name a
+  synthetic merge commit; post-checkout readback must match the declared source;
 - an acceptance profile does not use `continue-on-error` to soften its verdict;
 - a genuinely advisory witness may degrade only when that degradation is separately
   observable and does not substitute for the acceptance gate;
@@ -75,6 +78,10 @@ checks or freeze ordinary deterministic development.
 - Reusable workflows default to `contents: read` and require no secrets.
 - Heavy caches and installed tools live on the hosted runner, not persistent NFS.
 - No automatic external mutation belongs in a lint/analysis profile.
+- In a reusable workflow, `github.workflow_ref` / `github.workflow_sha` describe
+  the caller workflow context. Keep caller workflow identity separate from the
+  reusable-template identity, which is bound by the caller's immutable `uses:`
+  reference and GitHub's resolved `Uses:` execution record.
 - Project-specific write/readback or scientific acceptance remains a separate gate.
 - Artifact-producing CI should use a separate producer -> fresh consumer -> receipt
   pattern when acceptance depends on artifact portability; ordinary lint templates
