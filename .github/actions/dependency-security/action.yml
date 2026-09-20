@@ -1,0 +1,21 @@
+name: Dependency security witness
+description: Run checksum-verified OSV-Scanner and hash-pinned pip-audit against caller-declared dependency inputs.
+
+inputs:
+  inputs-file:
+    description: Caller-repository dependency-security input manifest.
+    required: false
+    default: config/dependency-security.inputs
+  receipt-path:
+    description: Machine-readable JSON receipt path.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Run dependency-security witness
+      shell: bash
+      env:
+        DEPENDENCY_SECURITY_INPUTS: ${{ inputs.inputs-file }}
+        DEPENDENCY_SECURITY_RECEIPT: ${{ inputs.receipt-path }}
+      run: python "$GITHUB_ACTION_PATH/dependency_security.py"

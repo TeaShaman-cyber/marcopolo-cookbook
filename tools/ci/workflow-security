@@ -39,7 +39,7 @@ printf 'WORKFLOW_SECURITY_TOOL zizmor=%s\n' "$("$ZIZMOR_VENV/bin/zizmor" --versi
 printf 'WORKFLOW_SECURITY_TOOL actionlint=%s\n' "$("$WORK_DIR/actionlint" -version | head -1)"
 
 printf '%s\n' '== zizmor offline =='
-"$ZIZMOR_VENV/bin/zizmor" --offline --format plain .github/workflows
+"$ZIZMOR_VENV/bin/zizmor" --offline --format plain .github
 zizmor_code=$?
 
 printf '%s\n' '== actionlint =='
