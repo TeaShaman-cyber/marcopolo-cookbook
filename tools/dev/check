@@ -115,5 +115,7 @@ printf '%s\n' '== repository tests =='
 python3 -m unittest discover -s tests -p 'test_*.py'
 tests/python-bootstrap.sh
 tests/wiki-push.sh
+rules/test-materialize-workspace-rules.sh
+tests/git-worktree-currentness.sh
 
 printf '%s\n' 'DEV_CHECK_PASS'
