@@ -35,6 +35,31 @@ If Session Search is unavailable or its corpus verification fails, state that
 explicitly. Do not silently present remembered, reconstructed, or other
 retrieved context as if it came from Session Search.
 
+## Repository currentness / canonical checkout
+
+A visible repository path and a clean working tree do not prove that the
+checked-out branch is the current authoritative source. Before using workspace
+repository files as canonical operational guidance, establish the authoritative
+ref for the task and refresh that ref when freshness materially matters.
+
+For the canonical MarcoPolo cookbook, the normal currentness check is:
+
+```bash
+git -C /workspace/marcopolo-cookbook fetch origin main
+/workspace/marcopolo-cookbook/git-worktree-currentness.sh /workspace/marcopolo-cookbook origin/main
+```
+
+`VERIFIED` means the worktree HEAD equals the selected authoritative ref and the
+worktree has no local modifications. `BLOCKED` or `UNKNOWN` means the worktree
+must not be silently treated as current canonical state.
+
+Do not destroy, reset, or switch a dirty or active feature/research worktree
+merely to obtain canonical guidance. Prefer reading the authoritative ref
+directly (for example `git show origin/main:<path>`) or use a separate clean
+worktree. A runtime projection such as `/workspace/RULES.md` remains distinct
+from both the current Git ref and any stale workspace checkout; verify the
+relevant postcondition explicitly.
+
 ## QA / verifier discovery
 
 Before authoring bespoke verification for repository or runtime work in
