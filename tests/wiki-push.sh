@@ -7,9 +7,9 @@ trap 'rm -rf "$TMP"' EXIT
 BIN="$TMP/bin"
 mkdir -p "$BIN" "$TMP/wiki"
 LOG="$TMP/calls.log"
-: > "$LOG"
+: >"$LOG"
 
-cat > "$BIN/gh" <<'GH'
+cat >"$BIN/gh" <<'GH'
 #!/bin/sh
 set -eu
 printf 'gh|GH_CONFIG_DIR=%s|%s\n' "${GH_CONFIG_DIR:-}" "$*" >> "$FAKE_LOG"
@@ -19,7 +19,7 @@ exit 0
 GH
 chmod +x "$BIN/gh"
 
-cat > "$BIN/git" <<'GIT'
+cat >"$BIN/git" <<'GIT'
 #!/bin/sh
 set -eu
 printf 'git|GH_CONFIG_DIR=%s|%s\n' "${GH_CONFIG_DIR:-}" "$*" >> "$FAKE_LOG"
@@ -55,29 +55,29 @@ GIT
 chmod +x "$BIN/git"
 
 run_case() {
-  name=$1 mode=$2 expected_rc=$3 expected_text=$4
-  out="$TMP/$name.out"
-  : > "$LOG"
-  set +e
-  FAKE_LOG="$LOG" FAKE_GIT_MODE="$mode" PATH="$BIN:$PATH" "$WRAPPER" "$TMP/wiki" >"$out" 2>&1
-  rc=$?
-  set -e
-  if [ "$rc" -ne "$expected_rc" ]; then
-    echo "FAIL $name: expected rc=$expected_rc got rc=$rc" >&2
-    cat "$out" >&2
-    exit 1
-  fi
-  grep -F "$expected_text" "$out" >/dev/null || {
-    echo "FAIL $name: missing output: $expected_text" >&2
-    cat "$out" >&2
-    exit 1
-  }
-  if grep -v 'GH_CONFIG_DIR=/workspace/.config/gh-write' "$LOG" | grep -E '^(git|gh)\|' >/dev/null; then
-    echo "FAIL $name: a command escaped gh-write profile" >&2
-    cat "$LOG" >&2
-    exit 1
-  fi
-  echo "ok $name"
+	name=$1 mode=$2 expected_rc=$3 expected_text=$4
+	out="$TMP/$name.out"
+	: >"$LOG"
+	set +e
+	FAKE_LOG="$LOG" FAKE_GIT_MODE="$mode" PATH="$BIN:$PATH" "$WRAPPER" "$TMP/wiki" >"$out" 2>&1
+	rc=$?
+	set -e
+	if [ "$rc" -ne "$expected_rc" ]; then
+		echo "FAIL $name: expected rc=$expected_rc got rc=$rc" >&2
+		cat "$out" >&2
+		exit 1
+	fi
+	grep -F "$expected_text" "$out" >/dev/null || {
+		echo "FAIL $name: missing output: $expected_text" >&2
+		cat "$out" >&2
+		exit 1
+	}
+	if grep -v 'GH_CONFIG_DIR=/workspace/.config/gh-write' "$LOG" | grep -E '^(git|gh)\|' >/dev/null; then
+		echo "FAIL $name: a command escaped gh-write profile" >&2
+		cat "$LOG" >&2
+		exit 1
+	fi
+	echo "ok $name"
 }
 
 run_case success success 0 'WIKI_PUSH SUCCESS branch=master sha=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'

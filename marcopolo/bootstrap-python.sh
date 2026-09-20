@@ -6,7 +6,7 @@ REQUIREMENTS="$ROOT/requirements-python.txt"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 check_runtime() {
-  "$PYTHON_BIN" - <<'PY'
+	"$PYTHON_BIN" - <<'PY'
 import importlib.metadata as metadata
 
 required = {
@@ -30,19 +30,19 @@ PY
 }
 
 if [[ "${1:-}" == "--check" ]]; then
-  check_runtime
-  exit 0
+	check_runtime
+	exit 0
 fi
 
 if check_runtime >/dev/null 2>&1; then
-  echo "PYTHON_RUNTIME_ALREADY_VERIFIED"
-  exit 0
+	echo "PYTHON_RUNTIME_ALREADY_VERIFIED"
+	exit 0
 fi
 
 "$PYTHON_BIN" -m pip install \
-  --user \
-  --disable-pip-version-check \
-  --no-warn-script-location \
-  -r "$REQUIREMENTS"
+	--user \
+	--disable-pip-version-check \
+	--no-warn-script-location \
+	-r "$REQUIREMENTS"
 
 check_runtime

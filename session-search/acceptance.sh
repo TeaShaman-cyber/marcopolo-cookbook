@@ -8,7 +8,7 @@ INGEST_PATH=
 QUERY=session
 
 usage() {
-  cat <<'EOF'
+	cat <<'EOF'
 Usage: acceptance.sh [--query TEXT] [--ingest PATH]
 
 Default mode is read-only against the live corpus. It verifies health,
@@ -19,44 +19,56 @@ EOF
 }
 
 while [ "$#" -gt 0 ]; do
-  case "$1" in
-    --query)
-      [ "$#" -ge 2 ] || { echo 'SESSION_SEARCH BLOCKED: QUERY_UNRESOLVED' >&2; exit 64; }
-      QUERY=$2
-      shift 2
-      ;;
-    --ingest)
-      [ "$#" -ge 2 ] || { echo 'SESSION_SEARCH BLOCKED: INGEST_PATH_UNRESOLVED' >&2; exit 64; }
-      MODE=EXPLICIT_INGEST
-      INGEST_PATH=$2
-      shift 2
-      ;;
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    *)
-      echo "SESSION_SEARCH BLOCKED: UNKNOWN_ARGUMENT: $1" >&2
-      exit 64
-      ;;
-  esac
+	case "$1" in
+	--query)
+		[ "$#" -ge 2 ] || {
+			echo 'SESSION_SEARCH BLOCKED: QUERY_UNRESOLVED' >&2
+			exit 64
+		}
+		QUERY=$2
+		shift 2
+		;;
+	--ingest)
+		[ "$#" -ge 2 ] || {
+			echo 'SESSION_SEARCH BLOCKED: INGEST_PATH_UNRESOLVED' >&2
+			exit 64
+		}
+		MODE=EXPLICIT_INGEST
+		INGEST_PATH=$2
+		shift 2
+		;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	*)
+		echo "SESSION_SEARCH BLOCKED: UNKNOWN_ARGUMENT: $1" >&2
+		exit 64
+		;;
+	esac
 done
 
 if [ -z "${SESSION_SEARCH_CORPUS:-}" ] && [ -r "$RUNTIME_ENV" ]; then
-  . "$RUNTIME_ENV"
+	. "$RUNTIME_ENV"
 fi
 CORPUS=${SESSION_SEARCH_CORPUS:-}
 if [ -z "$CORPUS" ]; then
-  echo 'SESSION_SEARCH BLOCKED: CORPUS_LOCATION_UNRESOLVED' >&2
-  exit 69
+	echo 'SESSION_SEARCH BLOCKED: CORPUS_LOCATION_UNRESOLVED' >&2
+	exit 69
 fi
 if [ ! -d "$ROOT" ] || [ ! -r "$CORPUS/corpus.sqlite3" ] || [ ! -d "$CORPUS/ledger/accepted" ]; then
-  echo 'SESSION_SEARCH BLOCKED: CORPUS_UNAVAILABLE' >&2
-  exit 69
+	echo 'SESSION_SEARCH BLOCKED: CORPUS_UNAVAILABLE' >&2
+	exit 69
 fi
 if [ "$MODE" = EXPLICIT_INGEST ]; then
-  [ -n "$INGEST_PATH" ] || { echo 'SESSION_SEARCH BLOCKED: INGEST_PATH_UNRESOLVED' >&2; exit 64; }
-  [ -r "$INGEST_PATH" ] || { echo 'SESSION_SEARCH BLOCKED: INGEST_PATH_UNREADABLE' >&2; exit 66; }
+	[ -n "$INGEST_PATH" ] || {
+		echo 'SESSION_SEARCH BLOCKED: INGEST_PATH_UNRESOLVED' >&2
+		exit 64
+	}
+	[ -r "$INGEST_PATH" ] || {
+		echo 'SESSION_SEARCH BLOCKED: INGEST_PATH_UNREADABLE' >&2
+		exit 66
+	}
 fi
 
 cd "$ROOT"
@@ -66,14 +78,17 @@ LIVE_VERIFY=$(python3 -m session_search.corpus verify --corpus "$CORPUS" --json)
 printf '%s\n' "$LIVE_VERIFY"
 
 if [ "$MODE" = EXPLICIT_INGEST ]; then
-  python3 -m session_search.corpus ingest --corpus "$CORPUS" --json "$INGEST_PATH"
-  LIVE_VERIFY=$(python3 -m session_search.corpus verify --corpus "$CORPUS" --json)
-  printf '%s\n' "$LIVE_VERIFY"
+	python3 -m session_search.corpus ingest --corpus "$CORPUS" --json "$INGEST_PATH"
+	LIVE_VERIFY=$(python3 -m session_search.corpus verify --corpus "$CORPUS" --json)
+	printf '%s\n' "$LIVE_VERIFY"
 fi
 
 GLOBAL=$(python3 -m session_search.search "$QUERY" --corpus "$CORPUS" --limit 8 --json)
 SESSION_ID=$(printf '%s' "$GLOBAL" | python3 -c 'import json,sys; rows=json.load(sys.stdin); print(rows[0]["session_id"] if rows else "")')
-[ -n "$SESSION_ID" ] || { echo 'SESSION_SEARCH BLOCKED: SEARCH_NO_HITS' >&2; exit 70; }
+[ -n "$SESSION_ID" ] || {
+	echo 'SESSION_SEARCH BLOCKED: SEARCH_NO_HITS' >&2
+	exit 70
+}
 printf '%s\n' "$GLOBAL"
 python3 -m session_search.search "$QUERY" --corpus "$CORPUS" --session "$SESSION_ID" --limit 8 --json
 
