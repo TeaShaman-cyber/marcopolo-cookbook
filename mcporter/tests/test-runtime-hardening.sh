@@ -14,15 +14,18 @@ bash mcporter/tests/test_inventory_provenance.sh >/dev/null
 # Build-contract changes must invalidate archives/caches produced by the earlier npm-install bundle.
 . mcporter/runtime/versions.env
 case "$RUNTIME_BUNDLE" in
-  *-v2) ;;
-  *) echo "FAIL: runtime bundle revision must invalidate pre-lockfile v1 artifacts" >&2; exit 1 ;;
+*-v2) ;;
+*)
+	echo "FAIL: runtime bundle revision must invalidate pre-lockfile v1 artifacts" >&2
+	exit 1
+	;;
 esac
 echo PASS
 # Acceptance must not independently read the archive/checksum publication pair.
 # ensure-runtime.sh is the coordinated reader and owns publication locking.
 if grep -q 'sha256sum' mcporter/tests/acceptance.sh; then
-  echo 'FAIL: acceptance bypasses coordinated archive reader' >&2
-  exit 1
+	echo 'FAIL: acceptance bypasses coordinated archive reader' >&2
+	exit 1
 fi
 grep -Fq 'CACHE="$("$ROOT/scripts/ensure-runtime.sh")"' mcporter/tests/acceptance.sh
 # Acceptance must verify the committed rebuild input even when a warm runtime cache exists.

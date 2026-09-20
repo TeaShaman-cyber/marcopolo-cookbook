@@ -4,4 +4,4 @@ set -euo pipefail
 ROOT=/workspace/tools/mcporter
 CACHE="$("$ROOT/scripts/ensure-runtime.sh")"
 exec "$CACHE/node/bin/node" "$CACHE/workbench/node_modules/mcporter/dist/cli.js" \
-  --config "$ROOT/config/mcporter.json" "$@"
+	--config "$ROOT/config/mcporter.json" "$@"
