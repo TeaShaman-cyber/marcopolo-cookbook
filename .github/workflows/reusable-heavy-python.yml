@@ -30,6 +30,8 @@ jobs:
       - name: Checkout caller repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
+          repository: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -53,21 +55,31 @@ jobs:
         shell: bash
         env:
           VERIFICATION_PROFILE: heavy-python
-          CALLER_REPOSITORY: ${{ github.repository }}
-          CALLER_SHA: ${{ github.sha }}
+          EVENT_REPOSITORY: ${{ github.repository }}
+          EVENT_SHA: ${{ github.sha }}
+          SOURCE_REPOSITORY: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name || github.repository }}
+          SOURCE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           RUN_ID: ${{ github.run_id }}
           RUN_ATTEMPT: ${{ github.run_attempt }}
-          WORKFLOW_REF: ${{ github.workflow_ref }}
-          WORKFLOW_SHA: ${{ github.workflow_sha }}
+          CALLER_WORKFLOW_REF: ${{ github.workflow_ref }}
+          CALLER_WORKFLOW_SHA: ${{ github.workflow_sha }}
         run: |
           set -euo pipefail
+          checkout_sha="$(git rev-parse HEAD)"
+          if [ "$checkout_sha" != "$SOURCE_SHA" ]; then
+            printf 'QA_SOURCE_MISMATCH expected=%s observed=%s\n' "$SOURCE_SHA" "$checkout_sha" >&2
+            exit 2
+          fi
           printf 'verification_profile=%s\n' "$VERIFICATION_PROFILE"
-          printf 'verification_repository=%s\n' "$CALLER_REPOSITORY"
-          printf 'verification_sha=%s\n' "$CALLER_SHA"
+          printf 'verification_event_repository=%s\n' "$EVENT_REPOSITORY"
+          printf 'verification_event_sha=%s\n' "$EVENT_SHA"
+          printf 'verification_source_repository=%s\n' "$SOURCE_REPOSITORY"
+          printf 'verification_source_sha=%s\n' "$SOURCE_SHA"
+          printf 'verification_checkout_sha=%s\n' "$checkout_sha"
           printf 'verification_run_id=%s\n' "$RUN_ID"
           printf 'verification_run_attempt=%s\n' "$RUN_ATTEMPT"
-          printf 'verification_workflow_ref=%s\n' "$WORKFLOW_REF"
-          printf 'verification_workflow_sha=%s\n' "$WORKFLOW_SHA"
+          printf 'verification_caller_workflow_ref=%s\n' "$CALLER_WORKFLOW_REF"
+          printf 'verification_caller_workflow_sha=%s\n' "$CALLER_WORKFLOW_SHA"
 
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
