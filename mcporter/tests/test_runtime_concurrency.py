@@ -11,12 +11,16 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 ENSURE = ROOT / "mcporter" / "scripts" / "ensure-runtime.sh"
 
-def build_archive(bundles: pathlib.Path, stage: pathlib.Path, name: str = "test-bundle") -> pathlib.Path:
+
+def build_archive(
+    bundles: pathlib.Path, stage: pathlib.Path, name: str = "test-bundle"
+) -> pathlib.Path:
     archive = bundles / f"{name}.tar.gz"
     with tarfile.open(archive, "w:gz") as tf:
         tf.add(stage / "node", arcname="node")
         tf.add(stage / "workbench", arcname="workbench")
     return archive
+
 
 class RuntimeConcurrencyTest(unittest.TestCase):
     def _fixture(self, td: pathlib.Path):
@@ -34,7 +38,9 @@ class RuntimeConcurrencyTest(unittest.TestCase):
             '#!/usr/bin/env bash\nif [[ "$1" == "--version" ]]; then echo v-test; else echo 0.test; fi\n'
         )
         node.chmod(0o755)
-        (stage / "workbench" / "node_modules" / "mcporter" / "dist" / "cli.js").write_text("")
+        (
+            stage / "workbench" / "node_modules" / "mcporter" / "dist" / "cli.js"
+        ).write_text("")
         return tool, bundles, stage
 
     def test_two_cold_starts_publish_one_valid_cache(self):
@@ -100,7 +106,9 @@ class RuntimeConcurrencyTest(unittest.TestCase):
             cache_root = tmpdir / f"marcopolo-mcporter-{uid}"
             cache = cache_root / "test-bundle"
             fake_node = cache / "node" / "bin" / "node"
-            fake_cli = cache / "workbench" / "node_modules" / "mcporter" / "dist" / "cli.js"
+            fake_cli = (
+                cache / "workbench" / "node_modules" / "mcporter" / "dist" / "cli.js"
+            )
             fake_node.parent.mkdir(parents=True)
             fake_cli.parent.mkdir(parents=True)
             marker = td / "fake-node-ran"
@@ -116,11 +124,20 @@ class RuntimeConcurrencyTest(unittest.TestCase):
             env["MCPORTER_ROOT"] = str(tool)
             env["TMPDIR"] = str(tmpdir)
             proc = subprocess.run(
-                [str(ENSURE)], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env
+                [str(ENSURE)],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                env=env,
             )
 
-            self.assertNotEqual(proc.returncode, 0, "insecure pre-existing cache root was accepted")
-            self.assertFalse(marker.exists(), "pre-planted cache executable ran before cache root trust was established")
+            self.assertNotEqual(
+                proc.returncode, 0, "insecure pre-existing cache root was accepted"
+            )
+            self.assertFalse(
+                marker.exists(),
+                "pre-planted cache executable ran before cache root trust was established",
+            )
 
     def test_reader_waits_for_consistent_publication_pair(self):
         with tempfile.TemporaryDirectory() as td_s:
@@ -155,6 +172,7 @@ class RuntimeConcurrencyTest(unittest.TestCase):
             out, err = proc.communicate(timeout=10)
             self.assertEqual(proc.returncode, 0, err)
             self.assertTrue(pathlib.Path(out.strip()).exists())
+
 
 if __name__ == "__main__":
     unittest.main()

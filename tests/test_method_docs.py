@@ -8,11 +8,15 @@ ROOT = Path(__file__).resolve().parents[1]
 class MethodDocsTest(unittest.TestCase):
     def test_feynman_and_five_whys_are_linked_from_root_readme(self):
         readme = (ROOT / "README.md").read_text(encoding="utf-8")
-        self.assertIn("[Feynman checkpoint](docs/methods/feynman-checkpoint.md)", readme)
+        self.assertIn(
+            "[Feynman checkpoint](docs/methods/feynman-checkpoint.md)", readme
+        )
         self.assertIn("[Five Whys](docs/methods/five-whys.md)", readme)
 
     def test_method_documents_exist_with_minimal_stop_rules(self):
-        feynman = (ROOT / "docs/methods/feynman-checkpoint.md").read_text(encoding="utf-8")
+        feynman = (ROOT / "docs/methods/feynman-checkpoint.md").read_text(
+            encoding="utf-8"
+        )
         five_whys = (ROOT / "docs/methods/five-whys.md").read_text(encoding="utf-8")
 
         self.assertIn("# Feynman checkpoint", feynman)

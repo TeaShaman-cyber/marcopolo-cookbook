@@ -21,9 +21,13 @@ def fail(code: str, exit_code: int) -> None:
 
 def download(connection: str, remote_path: str, local_path: Path) -> None:
     cmd = [
-        "connection", "download", connection,
-        "--remote-path", remote_path,
-        "--local-path", str(local_path.relative_to(Path("/workspace"))),
+        "connection",
+        "download",
+        connection,
+        "--remote-path",
+        remote_path,
+        "--local-path",
+        str(local_path.relative_to(Path("/workspace"))),
         "--json",
     ]
     p = subprocess.run(cmd, text=True, capture_output=True)
@@ -86,7 +90,9 @@ def atomic_install(values: dict[str, str], target: Path) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--remote-path", required=True, help="Google Drive provider path or file ID")
+    ap.add_argument(
+        "--remote-path", required=True, help="Google Drive provider path or file ID"
+    )
     ap.add_argument("--connection", default=DEFAULT_CONNECTION)
     ap.add_argument("--target", type=Path, default=DEFAULT_TARGET)
     args = ap.parse_args()

@@ -44,7 +44,9 @@ def atomic_write(dest: Path, data: dict[str, str]) -> None:
     os.chmod(dest.parent, 0o700)
     payload = "".join(f"{k}={data[k]}\n" for k in ALLOWED)
 
-    fd, tmp_name = tempfile.mkstemp(prefix=".universal-auth.", dir=str(dest.parent), text=True)
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=".universal-auth.", dir=str(dest.parent), text=True
+    )
     tmp = Path(tmp_name)
     try:
         os.fchmod(fd, 0o600)
@@ -60,7 +62,9 @@ def atomic_write(dest: Path, data: dict[str, str]) -> None:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Import Infisical Universal Auth credentials without printing secret values")
+    ap = argparse.ArgumentParser(
+        description="Import Infisical Universal Auth credentials without printing secret values"
+    )
     ap.add_argument("source", type=Path)
     ap.add_argument("--dest", type=Path, default=DEFAULT_DEST)
     ap.add_argument("--remove-source", action="store_true")
