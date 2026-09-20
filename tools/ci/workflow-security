@@ -1,0 +1,53 @@
+#!/bin/sh
+set -u
+
+ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
+	printf '%s\n' 'workflow-security: not inside a Git worktree' >&2
+	exit 2
+}
+cd "$ROOT" || exit 2
+
+TMP_BASE=${RUNNER_TEMP:-/tmp}
+WORK_DIR=$(mktemp -d "$TMP_BASE/workflow-security.XXXXXX") || exit 2
+cleanup() {
+	rm -rf "$WORK_DIR"
+}
+trap cleanup EXIT
+trap 'cleanup; exit 130' INT
+trap 'cleanup; exit 143' TERM
+
+ZIZMOR_VENV="$WORK_DIR/zizmor-venv"
+ACTIONLINT_VERSION=1.7.12
+ACTIONLINT_SHA256=8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+ACTIONLINT_ARCHIVE="$WORK_DIR/actionlint.tar.gz"
+ACTIONLINT_URL="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+
+python -m venv "$ZIZMOR_VENV" || exit 2
+"$ZIZMOR_VENV/bin/python" -m pip install --disable-pip-version-check --require-hashes \
+	-r requirements/ci-workflow-security.txt || exit 2
+
+curl -fsSL --retry 3 --retry-delay 1 -o "$ACTIONLINT_ARCHIVE" "$ACTIONLINT_URL" || exit 2
+actual_sha=$(sha256sum "$ACTIONLINT_ARCHIVE" | awk '{print $1}')
+if [ "$actual_sha" != "$ACTIONLINT_SHA256" ]; then
+	printf 'WORKFLOW_SECURITY_TOOL_MISMATCH tool=actionlint expected=%s observed=%s\n' \
+		"$ACTIONLINT_SHA256" "$actual_sha" >&2
+	exit 2
+fi
+tar -xzf "$ACTIONLINT_ARCHIVE" -C "$WORK_DIR" actionlint || exit 2
+
+printf 'WORKFLOW_SECURITY_TOOL zizmor=%s\n' "$("$ZIZMOR_VENV/bin/zizmor" --version | awk '{print $2}')"
+printf 'WORKFLOW_SECURITY_TOOL actionlint=%s\n' "$("$WORK_DIR/actionlint" -version | head -1)"
+
+printf '%s\n' '== zizmor offline =='
+"$ZIZMOR_VENV/bin/zizmor" --offline --format plain .github/workflows
+zizmor_code=$?
+
+printf '%s\n' '== actionlint =='
+"$WORK_DIR/actionlint" -no-color .github/workflows/*.yml
+actionlint_code=$?
+
+printf 'WORKFLOW_SECURITY_RESULT zizmor=%s actionlint=%s\n' "$zizmor_code" "$actionlint_code"
+if [ "$zizmor_code" -ne 0 ] || [ "$actionlint_code" -ne 0 ]; then
+	exit 1
+fi
+printf '%s\n' 'WORKFLOW_SECURITY_PASS'
