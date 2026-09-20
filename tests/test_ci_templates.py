@@ -32,6 +32,67 @@ class ReusableCiTemplateContractTest(unittest.TestCase):
                 for line in uses:
                     self.assertRegex(line.strip(), sha_use)
 
+    def test_checkout_does_not_persist_credentials(self):
+        for path in (CANONICAL, HEAVY):
+            with self.subTest(path=path.name):
+                text = path.read_text()
+                checkout = text.split("uses: actions/checkout@", 1)[1].split(
+                    "- name:", 1
+                )[0]
+                self.assertIn("persist-credentials: false", checkout)
+
+    def test_setup_python_uses_action_owned_hyphenated_input_name(self):
+        for path in (CANONICAL, HEAVY):
+            with self.subTest(path=path.name):
+                text = path.read_text()
+                setup = text.split("uses: actions/setup-python@", 1)[1].split(
+                    "- name:", 1
+                )[0]
+                self.assertIn("python-version: ${{ inputs.python_version }}", setup)
+                self.assertNotIn("python_version:", setup)
+
+    def test_acceptance_templates_do_not_soften_failures(self):
+        for path in (CANONICAL, HEAVY):
+            with self.subTest(path=path.name):
+                self.assertNotIn("continue-on-error", path.read_text())
+
+    def test_templates_emit_exact_execution_identity(self):
+        for path, profile in ((CANONICAL, "canonical-qa"), (HEAVY, "heavy-python")):
+            with self.subTest(path=path.name):
+                text = path.read_text()
+                self.assertIn(f"VERIFICATION_PROFILE: {profile}", text)
+                for marker in (
+                    "github.repository",
+                    "github.sha",
+                    "github.run_id",
+                    "github.run_attempt",
+                    "github.workflow_ref",
+                    "github.workflow_sha",
+                ):
+                    self.assertIn(marker, text)
+
+    def test_heavy_profile_preserves_interrupt_and_termination_semantics(self):
+        text = HEAVY.read_text()
+        self.assertIn("trap cleanup_heartbeat EXIT", text)
+        self.assertIn("trap 'cleanup_heartbeat; exit 130' INT", text)
+        self.assertIn("trap 'cleanup_heartbeat; exit 143' TERM", text)
+        self.assertIn("trap - EXIT INT TERM", text)
+
+    def test_heavy_profile_telemetry_is_lightweight_and_sixty_second(self):
+        text = HEAVY.read_text()
+        self.assertIn("sleep 60", text)
+        self.assertIn("heavy_python_resource_baseline", text)
+        self.assertIn("heavy_python_heartbeat", text)
+        self.assertIn("heavy_python_resource_final", text)
+        snapshot = text.split("emit_resource_snapshot() {", 1)[1].split(
+            "heartbeat() {", 1
+        )[0]
+        self.assertIn("/proc/meminfo", snapshot)
+        self.assertIn("df -Pk /", snapshot)
+        heartbeat = text.split("heartbeat() {", 1)[1].split("}", 1)[0]
+        for forbidden in ("du ", "find ", "git ", "gh ", "curl ", "lake "):
+            self.assertNotIn(forbidden, heartbeat)
+
     def test_workflow_input_identifiers_are_safe_for_dot_notation(self):
         bad = re.compile(r"inputs\.[A-Za-z_][A-Za-z0-9_]*-[A-Za-z0-9_-]+")
         for path in (CANONICAL, HEAVY):

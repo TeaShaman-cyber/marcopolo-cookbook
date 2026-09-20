@@ -33,6 +33,20 @@ A repository should normally expose heavy Python policy through
 `tools/ci/heavy-python` plus `requirements/ci-heavy.txt`. Which analyzers run is a
 repository decision; the shared workflow must not silently add a new lint policy.
 
+Cross-repository QA history adds four operational rules:
+
+- checkout in read-only QA uses `persist-credentials: false`;
+- an acceptance profile does not use `continue-on-error` to soften its verdict;
+- a genuinely advisory witness may degrade only when that degradation is separately
+  observable and does not substitute for the acceptance gate;
+- long heavy analysis emits lightweight resource telemetry at no faster than a
+  60-second cadence using cheap procfs/filesystem observations rather than nested
+  scans or network calls.
+
+New expensive stress cases, research smokes, or analyzers should begin outside the
+ordinary blocking PR gate. Promote them into a blocking invariant only after they
+demonstrate stable signal or protect a reproduced regression.
+
 ## L2 — Codespace interactive heavy debug
 
 Use a Codespace when a heavy hosted RED needs interactive diagnosis that is
@@ -62,3 +76,6 @@ checks or freeze ordinary deterministic development.
 - Heavy caches and installed tools live on the hosted runner, not persistent NFS.
 - No automatic external mutation belongs in a lint/analysis profile.
 - Project-specific write/readback or scientific acceptance remains a separate gate.
+- Artifact-producing CI should use a separate producer -> fresh consumer -> receipt
+  pattern when acceptance depends on artifact portability; ordinary lint templates
+  should not inherit that cost by default.
