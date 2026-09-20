@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   dependency-security:
-    uses: TeaShaman-cyber/marcopolo-cookbook/.github/workflows/reusable-dependency-security.yml@dfddb70a7e164968f979825e85f9b1faabcb4d68
+    uses: TeaShaman-cyber/marcopolo-cookbook/.github/workflows/reusable-dependency-security.yml@a6c1a24b642585a6d4dc1a87d2eef6f61aee965a
     with:
       python_version: "3.11"
-      analysis_endpoint: tools/ci/dependency-security
+      inputs_file: config/dependency-security.inputs
