@@ -99,10 +99,20 @@ class DependencySecurityProfileContractTest(unittest.TestCase):
         self.assertEqual(len(hashes), 29)
         self.assertEqual(len(set(hashes)), 29)
 
-    def test_candidate_has_no_relative_self_consumer(self):
-        self.assertFalse(
-            (ROOT / ".github" / "workflows" / "dependency-security.yml").exists()
+    def test_self_consumer_pins_promoted_profile(self):
+        path = ROOT / ".github" / "workflows" / "dependency-security.yml"
+        self.assertTrue(path.is_file())
+        text = path.read_text()
+        expected = (
+            "uses: TeaShaman-cyber/marcopolo-cookbook/.github/workflows/"
+            "reusable-dependency-security.yml@dfddb70a7e164968f979825e85f9b1faabcb4d68"
         )
+        self.assertIn(expected, text)
+        self.assertNotIn(
+            "uses: ./.github/workflows/reusable-dependency-security.yml", text
+        )
+        self.assertNotIn("@main", text)
+        self.assertIn("permissions:\n  contents: read", text)
 
 
 if __name__ == "__main__":
