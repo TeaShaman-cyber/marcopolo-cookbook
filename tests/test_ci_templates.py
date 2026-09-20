@@ -5,12 +5,13 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 CANONICAL = ROOT / ".github" / "workflows" / "reusable-canonical-qa.yml"
 HEAVY = ROOT / ".github" / "workflows" / "reusable-heavy-python.yml"
+PROPERTY = ROOT / ".github" / "workflows" / "reusable-property-test.yml"
 LADDER = ROOT / "docs" / "operations" / "verification-ladder.md"
 
 
 class ReusableCiTemplateContractTest(unittest.TestCase):
     def test_templates_exist_and_are_workflow_call_only(self):
-        for path in (CANONICAL, HEAVY):
+        for path in (CANONICAL, HEAVY, PROPERTY):
             with self.subTest(path=path.name):
                 self.assertTrue(path.is_file())
                 text = path.read_text()
@@ -22,7 +23,7 @@ class ReusableCiTemplateContractTest(unittest.TestCase):
 
     def test_templates_are_read_only_and_action_revisions_are_pinned(self):
         sha_use = re.compile(r"uses:\s+[^@\s]+@[0-9a-f]{40}$", re.MULTILINE)
-        for path in (CANONICAL, HEAVY):
+        for path in (CANONICAL, HEAVY, PROPERTY):
             with self.subTest(path=path.name):
                 text = path.read_text()
                 self.assertIn("permissions:\n  contents: read", text)
@@ -33,7 +34,7 @@ class ReusableCiTemplateContractTest(unittest.TestCase):
                     self.assertRegex(line.strip(), sha_use)
 
     def test_checkout_does_not_persist_credentials(self):
-        for path in (CANONICAL, HEAVY):
+        for path in (CANONICAL, HEAVY, PROPERTY):
             with self.subTest(path=path.name):
                 text = path.read_text()
                 checkout = text.split("uses: actions/checkout@", 1)[1].split(
@@ -42,7 +43,7 @@ class ReusableCiTemplateContractTest(unittest.TestCase):
                 self.assertIn("persist-credentials: false", checkout)
 
     def test_setup_python_uses_action_owned_hyphenated_input_name(self):
-        for path in (CANONICAL, HEAVY):
+        for path in (CANONICAL, HEAVY, PROPERTY):
             with self.subTest(path=path.name):
                 text = path.read_text()
                 setup = text.split("uses: actions/setup-python@", 1)[1].split(
@@ -52,7 +53,7 @@ class ReusableCiTemplateContractTest(unittest.TestCase):
                 self.assertNotIn("python_version:", setup)
 
     def test_acceptance_templates_do_not_soften_failures(self):
-        for path in (CANONICAL, HEAVY):
+        for path in (CANONICAL, HEAVY, PROPERTY):
             with self.subTest(path=path.name):
                 self.assertNotIn("continue-on-error", path.read_text())
 
@@ -61,7 +62,7 @@ class ReusableCiTemplateContractTest(unittest.TestCase):
             "github.event.pull_request.head.repo.full_name || github.repository"
         )
         expected_sha = "github.event.pull_request.head.sha || github.sha"
-        for path in (CANONICAL, HEAVY):
+        for path in (CANONICAL, HEAVY, PROPERTY):
             with self.subTest(path=path.name):
                 text = path.read_text()
                 self.assertIn(expected_repo, text)
@@ -72,7 +73,11 @@ class ReusableCiTemplateContractTest(unittest.TestCase):
                 self.assertIn(r"verification_checkout_sha=%s\n", text)
 
     def test_templates_emit_separate_event_source_and_caller_workflow_identity(self):
-        for path, profile in ((CANONICAL, "canonical-qa"), (HEAVY, "heavy-python")):
+        for path, profile in (
+            (CANONICAL, "canonical-qa"),
+            (HEAVY, "heavy-python"),
+            (PROPERTY, "property-test"),
+        ):
             with self.subTest(path=path.name):
                 text = path.read_text()
                 self.assertIn(f"VERIFICATION_PROFILE: {profile}", text)
@@ -115,13 +120,14 @@ class ReusableCiTemplateContractTest(unittest.TestCase):
 
     def test_workflow_input_identifiers_are_safe_for_dot_notation(self):
         bad = re.compile(r"inputs\.[A-Za-z_][A-Za-z0-9_]*-[A-Za-z0-9_-]+")
-        for path in (CANONICAL, HEAVY):
+        for path in (CANONICAL, HEAVY, PROPERTY):
             with self.subTest(path=path.name):
                 self.assertIsNone(bad.search(path.read_text()))
 
     def test_templates_have_bounded_timeouts(self):
         self.assertIn("timeout-minutes: 15", CANONICAL.read_text())
         self.assertIn("timeout-minutes: 20", HEAVY.read_text())
+        self.assertIn("timeout-minutes: 15", PROPERTY.read_text())
 
     def test_canonical_profile_calls_repository_owned_qa(self):
         text = CANONICAL.read_text()
@@ -143,6 +149,17 @@ class ReusableCiTemplateContractTest(unittest.TestCase):
         )
         for forbidden in ("semgrep", "mypy", "bandit", "pyright"):
             self.assertNotIn(forbidden, text.lower())
+
+    def test_property_profile_requires_caller_owned_hash_lock_and_endpoint(self):
+        text = PROPERTY.read_text()
+        self.assertIn('default: "requirements/ci-property.txt"', text)
+        self.assertIn('default: "tools/ci/property-test"', text)
+        self.assertIn("--require-hashes", text)
+        self.assertIn("missing property-test lock", text)
+        self.assertIn("missing property-test endpoint", text)
+        self.assertIn("PROPERTY_TEST_RUNTIME", text)
+        self.assertNotIn("hypothesis", text.lower())
+        self.assertNotIn("continue-on-error", text)
 
     def test_ladder_separates_local_ci_and_codespace_roles(self):
         text = LADDER.read_text()
