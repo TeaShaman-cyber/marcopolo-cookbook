@@ -56,9 +56,20 @@ must not be silently treated as current canonical state.
 Do not destroy, reset, or switch a dirty or active feature/research worktree
 merely to obtain canonical guidance. Prefer reading the authoritative ref
 directly (for example `git show origin/main:<path>`) or use a separate clean
-worktree. A runtime projection such as `/workspace/RULES.md` remains distinct
-from both the current Git ref and any stale workspace checkout; verify the
-relevant postcondition explicitly.
+worktree.
+
+Do not infer that an existing non-main branch, checkout, or worktree is active
+user-authored work merely because it exists in `/workspace`. Treat its
+provenance and ownership as `UNKNOWN` until current issue/PR/session evidence or
+an explicit user statement establishes otherwise. Identify its repository,
+branch/HEAD, dirty state, and linked issue/PR before deciding to continue,
+retire, or preserve it. Prefer disposable worktrees or short-lived branches for
+bounded agent changes, and remove them after verified merge when no recovery
+intent remains; do not accumulate new long-lived workspace branches by default.
+
+A runtime projection such as `/workspace/RULES.md` remains distinct from both
+the current Git ref and any stale workspace checkout; verify the relevant
+postcondition explicitly.
 
 ## QA / verifier discovery
 
