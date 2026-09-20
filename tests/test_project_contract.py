@@ -26,15 +26,22 @@ class ProjectContractSourceTest(unittest.TestCase):
     def test_project_owned_and_external_issue_authority_are_distinct(self):
         text = CONTRACT.read_text(encoding="utf-8")
 
-        self.assertIn("Frequent narrow Issues are acceptable for durable traceability", text)
+        self.assertIn(
+            "Frequent narrow Issues are acceptable for durable traceability", text
+        )
         self.assertIn("Require explicit mutation-specific user permission", text)
         self.assertIn("does not imply permission to publish externally", text)
 
     def test_project_contract_precedes_workspace_rules_for_same_concern(self):
         text = CONTRACT.read_text(encoding="utf-8")
 
-        self.assertIn("For routing, authority and permission, the Project Contract governs", text)
-        self.assertIn("Workspace RULES govern MarcoPolo runtime mechanics after route selection", text)
+        self.assertIn(
+            "For routing, authority and permission, the Project Contract governs", text
+        )
+        self.assertIn(
+            "Workspace RULES govern MarcoPolo runtime mechanics after route selection",
+            text,
+        )
         self.assertIn("BLOCK or remain UNKNOWN", text)
 
     def test_project_contract_fits_project_settings_limit(self):

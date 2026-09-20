@@ -5,6 +5,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 WRAPPER = ROOT / "search.sh"
 README = ROOT / "README.md"
 
+
 class SessionSearchWrapperContractTests(unittest.TestCase):
     def test_wrapper_is_corpus_first_and_restart_safe(self):
         text = WRAPPER.read_text(encoding="utf-8")
@@ -25,6 +26,7 @@ class SessionSearchWrapperContractTests(unittest.TestCase):
         self.assertIn("runtime.env", text)
         self.assertIn("SESSION_SEARCH_CORPUS", text)
         self.assertIn("/workspace/tools/search/search.sh", text)
+
 
 if __name__ == "__main__":
     unittest.main()

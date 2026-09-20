@@ -6,7 +6,9 @@ class CandidateSkillContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.root = Path(__file__).resolve().parents[1]
-        cls.skill = cls.root / "skills" / "candidates" / "using-theseus-marcopolo" / "SKILL.md"
+        cls.skill = (
+            cls.root / "skills" / "candidates" / "using-theseus-marcopolo" / "SKILL.md"
+        )
         cls.text = cls.skill.read_text(encoding="utf-8")
 
     def test_patch_version_closes_router_authority_holes(self):
@@ -29,8 +31,12 @@ class CandidateSkillContractTests(unittest.TestCase):
 
     def test_missing_project_cookbook_is_checked_on_accepted_source_revision(self):
         lower = self.text.lower()
-        self.assertIn("if the accepted cookbook source revision has no project cookbook", lower)
-        self.assertNotIn("if the accepted target revision has no project cookbook", lower)
+        self.assertIn(
+            "if the accepted cookbook source revision has no project cookbook", lower
+        )
+        self.assertNotIn(
+            "if the accepted target revision has no project cookbook", lower
+        )
         self.assertIn("do not create a project cookbook automatically", lower)
         self.assertIn("explicit user approval", lower)
 
