@@ -1,0 +1,339 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+import tempfile
+from datetime import datetime, timezone
+from urllib.request import urlopen
+
+OSV_VERSION = "2.6.0"
+OSV_SHA256 = "ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108"
+OSV_URL = (
+    "https://github.com/google/osv-scanner/releases/download/"
+    f"v{OSV_VERSION}/osv-scanner_linux_amd64"
+)
+PIP_AUDIT_VERSION = "2.10.1"
+INPUTS_FILE = Path("config/dependency-security.inputs")
+TOOL_LOCK = Path("requirements/ci-dependency-security.txt")
+
+
+def run(
+    args: list[str], *, env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        args,
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=env,
+    )
+
+
+def write_receipt(receipt_path: Path, receipt: dict[str, object]) -> None:
+    receipt_path.parent.mkdir(parents=True, exist_ok=True)
+    receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
+
+
+def fail(
+    receipt_path: Path, receipt: dict[str, object], status: str, message: str, code: int
+) -> int:
+    receipt["status"] = status
+    receipt["error"] = message
+    write_receipt(receipt_path, receipt)
+    print(f"DEPENDENCY_SECURITY_STATUS {status}")
+    print(message, file=sys.stderr)
+    return code
+
+
+def parse_inputs() -> list[tuple[str, Path]]:
+    rows: list[tuple[str, Path]] = []
+    for raw in INPUTS_FILE.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split(maxsplit=1)
+        if len(parts) != 2 or parts[0] not in {
+            "osv-lockfile",
+            "pip-requirements",
+            "pip-hashed",
+        }:
+            raise ValueError(f"invalid dependency-security input line: {raw}")
+        rows.append((parts[0], Path(parts[1])))
+    if not rows:
+        raise ValueError("dependency-security input list is empty")
+    return rows
+
+
+def count_osv_findings(data: dict[str, object]) -> tuple[int, int, list[str]]:
+    vulnerable_packages = 0
+    advisory_ids: set[str] = set()
+    sources: list[str] = []
+    for result in data.get("results", []):
+        if not isinstance(result, dict):
+            continue
+        source = result.get("source", {})
+        if isinstance(source, dict) and isinstance(source.get("path"), str):
+            sources.append(source["path"])
+        for package in result.get("packages", []):
+            if not isinstance(package, dict):
+                continue
+            groups = package.get("groups", [])
+            vulns = package.get("vulnerabilities", [])
+            if groups or vulns:
+                vulnerable_packages += 1
+            for group in groups:
+                if not isinstance(group, dict):
+                    continue
+                for advisory in group.get("ids", []):
+                    if isinstance(advisory, str):
+                        advisory_ids.add(advisory)
+    return vulnerable_packages, len(advisory_ids), sorted(advisory_ids)
+
+
+def count_pip_findings(data: dict[str, object]) -> tuple[int, int, list[str]]:
+    vulnerable_dependencies = 0
+    advisory_ids: set[str] = set()
+    for dependency in data.get("dependencies", []):
+        if not isinstance(dependency, dict):
+            continue
+        vulns = dependency.get("vulns", [])
+        if vulns:
+            vulnerable_dependencies += 1
+        for vuln in vulns:
+            if isinstance(vuln, dict) and isinstance(vuln.get("id"), str):
+                advisory_ids.add(vuln["id"])
+    return vulnerable_dependencies, len(advisory_ids), sorted(advisory_ids)
+
+
+def main() -> int:
+    root_proc = run(["git", "rev-parse", "--show-toplevel"])
+    if root_proc.returncode != 0:
+        print("dependency-security: not inside a Git worktree", file=sys.stderr)
+        return 2
+    root = Path(root_proc.stdout.strip())
+    os.chdir(root)
+
+    receipt_path = Path(
+        os.environ.get(
+            "DEPENDENCY_SECURITY_RECEIPT",
+            os.path.join(
+                os.environ.get("RUNNER_TEMP", "/tmp"),
+                "dependency-security-receipt.json",
+            ),
+        )
+    )
+    source_sha_proc = run(["git", "rev-parse", "HEAD"])
+    source_sha = (
+        source_sha_proc.stdout.strip() if source_sha_proc.returncode == 0 else "UNKNOWN"
+    )
+    receipt: dict[str, object] = {
+        "schema_version": 1,
+        "observed_at_utc": datetime.now(timezone.utc).isoformat(),
+        "source_sha": source_sha,
+        "status": "UNKNOWN",
+        "tools": {
+            "osv_scanner": {
+                "version": OSV_VERSION,
+                "sha256": OSV_SHA256,
+                "mode": "online-osv",
+            },
+            "pip_audit": {"version": PIP_AUDIT_VERSION, "service": "pypi"},
+        },
+        "inputs": [],
+        "findings": {
+            "osv_vulnerable_packages": 0,
+            "osv_advisory_count": 0,
+            "pip_vulnerable_dependencies": 0,
+            "pip_advisory_count": 0,
+            "advisory_ids": [],
+        },
+    }
+
+    try:
+        inputs = parse_inputs()
+    except (OSError, ValueError) as exc:
+        return fail(receipt_path, receipt, "DEPENDENCY_COLLECTION_FAILED", str(exc), 2)
+    for kind, path in inputs:
+        if not path.is_file():
+            return fail(
+                receipt_path,
+                receipt,
+                "DEPENDENCY_COLLECTION_FAILED",
+                f"missing declared input: {path}",
+                2,
+            )
+        cast_inputs = receipt["inputs"]
+        assert isinstance(cast_inputs, list)
+        cast_inputs.append({"kind": kind, "path": str(path)})
+
+    temp_root = Path(
+        tempfile.mkdtemp(
+            prefix="dependency-security.", dir=os.environ.get("RUNNER_TEMP", "/tmp")
+        )
+    )
+    try:
+        venv_dir = temp_root / "pip-audit-venv"
+        create = run([sys.executable, "-m", "venv", str(venv_dir)])
+        if create.returncode != 0:
+            return fail(
+                receipt_path, receipt, "TOOL_INTEGRITY_FAILED", create.stderr, 4
+            )
+        pip_bin = venv_dir / "bin" / "python"
+        install = run(
+            [
+                str(pip_bin),
+                "-m",
+                "pip",
+                "install",
+                "--disable-pip-version-check",
+                "--require-hashes",
+                "-r",
+                str(TOOL_LOCK),
+            ]
+        )
+        if install.returncode != 0:
+            return fail(
+                receipt_path, receipt, "TOOL_INTEGRITY_FAILED", install.stderr, 4
+            )
+        pip_audit = venv_dir / "bin" / "pip-audit"
+
+        osv_bin = temp_root / "osv-scanner"
+        try:
+            with urlopen(OSV_URL, timeout=30) as response, osv_bin.open("wb") as output:
+                shutil.copyfileobj(response, output)
+        except OSError as exc:
+            return fail(
+                receipt_path, receipt, "VULNERABILITY_SOURCE_UNAVAILABLE", str(exc), 3
+            )
+        actual_osv_sha = hashlib.sha256(osv_bin.read_bytes()).hexdigest()
+        if actual_osv_sha != OSV_SHA256:
+            return fail(
+                receipt_path,
+                receipt,
+                "TOOL_INTEGRITY_FAILED",
+                f"osv-scanner sha256 expected={OSV_SHA256} observed={actual_osv_sha}",
+                4,
+            )
+        osv_bin.chmod(0o755)
+
+        advisory_ids: set[str] = set()
+        osv_advisory_ids: set[str] = set()
+        pip_advisory_ids: set[str] = set()
+        osv_vulnerable_packages = 0
+        pip_vulnerable_dependencies = 0
+
+        for kind, path in inputs:
+            if kind == "osv-lockfile":
+                result = run(
+                    [
+                        str(osv_bin),
+                        "scan",
+                        "source",
+                        "--lockfile",
+                        str(path),
+                        "--no-resolve",
+                        "--format",
+                        "json",
+                    ]
+                )
+                try:
+                    data = json.loads(result.stdout or "{}")
+                except json.JSONDecodeError:
+                    return fail(
+                        receipt_path,
+                        receipt,
+                        "VULNERABILITY_SOURCE_UNAVAILABLE",
+                        result.stderr or "OSV returned invalid JSON",
+                        3,
+                    )
+                package_count, _advisory_count, ids = count_osv_findings(data)
+                osv_vulnerable_packages += package_count
+                osv_advisory_ids.update(ids)
+                advisory_ids.update(ids)
+                if result.returncode not in {0, 1}:
+                    return fail(
+                        receipt_path,
+                        receipt,
+                        "VULNERABILITY_SOURCE_UNAVAILABLE",
+                        result.stderr or f"OSV exited {result.returncode}",
+                        3,
+                    )
+                continue
+
+            audit_args = [
+                str(pip_audit),
+                "-r",
+                str(path),
+                "--strict",
+                "--progress-spinner",
+                "off",
+                "--format",
+                "json",
+            ]
+            if kind == "pip-hashed":
+                audit_args.extend(["--require-hashes", "--disable-pip"])
+            dry_run = run(audit_args + ["--dry-run"])
+            if dry_run.returncode != 0:
+                return fail(
+                    receipt_path,
+                    receipt,
+                    "DEPENDENCY_COLLECTION_FAILED",
+                    dry_run.stderr or f"pip-audit dry-run exited {dry_run.returncode}",
+                    2,
+                )
+            result = run(audit_args)
+            try:
+                data = json.loads(result.stdout or "{}")
+            except json.JSONDecodeError:
+                return fail(
+                    receipt_path,
+                    receipt,
+                    "VULNERABILITY_SOURCE_UNAVAILABLE",
+                    result.stderr or "pip-audit returned invalid JSON",
+                    3,
+                )
+            dependency_count, _advisory_count, ids = count_pip_findings(data)
+            pip_vulnerable_dependencies += dependency_count
+            pip_advisory_ids.update(ids)
+            advisory_ids.update(ids)
+            if result.returncode not in {0, 1}:
+                return fail(
+                    receipt_path,
+                    receipt,
+                    "VULNERABILITY_SOURCE_UNAVAILABLE",
+                    result.stderr or f"pip-audit exited {result.returncode}",
+                    3,
+                )
+
+        findings = receipt["findings"]
+        assert isinstance(findings, dict)
+        findings["osv_vulnerable_packages"] = osv_vulnerable_packages
+        findings["pip_vulnerable_dependencies"] = pip_vulnerable_dependencies
+        findings["advisory_ids"] = sorted(advisory_ids)
+        findings["osv_advisory_count"] = len(osv_advisory_ids)
+        findings["pip_advisory_count"] = len(pip_advisory_ids)
+
+        if advisory_ids:
+            receipt["status"] = "VULNERABILITY_FOUND"
+            write_receipt(receipt_path, receipt)
+            print("DEPENDENCY_SECURITY_STATUS VULNERABILITY_FOUND")
+            print(f"DEPENDENCY_SECURITY_FINDINGS advisories={len(advisory_ids)}")
+            return 1
+
+        receipt["status"] = "CLEAN_AT_QUERY_TIME"
+        write_receipt(receipt_path, receipt)
+        print("DEPENDENCY_SECURITY_STATUS CLEAN_AT_QUERY_TIME")
+        return 0
+    finally:
+        shutil.rmtree(temp_root, ignore_errors=True)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
