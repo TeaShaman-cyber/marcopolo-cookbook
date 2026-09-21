@@ -1,0 +1,69 @@
+name: Semantic advisory mechanics
+description: Prepare bounded diff input, package freshness, and an exact verified toolchain artifact without owning semantic policy.
+
+inputs:
+  profile-file:
+    description: Caller-owned semantic QA profile JSON.
+    required: true
+  tool:
+    description: Tool key inside the caller-owned profile JSON.
+    required: true
+  base-sha:
+    description: Exact base commit for the advisory input.
+    required: true
+  candidate-sha:
+    description: Exact candidate commit for the advisory input.
+    required: true
+  repository:
+    description: Caller repository identity.
+    required: true
+  task-id:
+    description: Caller task identity.
+    required: true
+  output-root:
+    description: Directory for mechanics receipts and bounded input.
+    required: true
+  runtime-dir:
+    description: Directory where the verified inner toolchain tar is extracted.
+    required: true
+
+outputs:
+  input-status:
+    description: READY, DEGRADED, or NO_SIGNAL.
+    value: ${{ steps.mechanics.outputs.input-status }}
+  freshness-status:
+    description: CURRENT, STALE_AVAILABLE, or CURRENTNESS_UNKNOWN.
+    value: ${{ steps.mechanics.outputs.freshness-status }}
+  package-status:
+    description: READY, SKIPPED_NO_SIGNAL, or UNAVAILABLE.
+    value: ${{ steps.mechanics.outputs.package-status }}
+  input-manifest:
+    description: Absolute input manifest path.
+    value: ${{ steps.mechanics.outputs.input-manifest }}
+  input-root:
+    description: Absolute bounded input root.
+    value: ${{ steps.mechanics.outputs.input-root }}
+  runtime-dir:
+    description: Absolute verified extracted runtime path.
+    value: ${{ steps.mechanics.outputs.runtime-dir }}
+  receipt-path:
+    description: Absolute mechanics receipt path.
+    value: ${{ steps.mechanics.outputs.receipt-path }}
+
+runs:
+  using: composite
+  steps:
+    - id: mechanics
+      name: Prepare semantic advisory mechanics
+      shell: bash
+      env:
+        SEMANTIC_PROFILE_FILE: ${{ inputs.profile-file }}
+        SEMANTIC_TOOL: ${{ inputs.tool }}
+        SEMANTIC_BASE_SHA: ${{ inputs.base-sha }}
+        SEMANTIC_CANDIDATE_SHA: ${{ inputs.candidate-sha }}
+        SEMANTIC_REPOSITORY: ${{ inputs.repository }}
+        SEMANTIC_TASK_ID: ${{ inputs.task-id }}
+        SEMANTIC_OUTPUT_ROOT: ${{ inputs.output-root }}
+        SEMANTIC_RUNTIME_DIR: ${{ inputs.runtime-dir }}
+        GH_TOKEN: ${{ github.token }}
+      run: python3 "$GITHUB_ACTION_PATH/mechanics.py"
