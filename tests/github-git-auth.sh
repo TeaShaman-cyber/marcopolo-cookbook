@@ -45,6 +45,18 @@ set -e
 	exit 1
 }
 
+WORKSPACE_BIN="$TMP/workspace-bin"
+mkdir -p "$WORKSPACE_BIN"
+cp "$BIN/gh" "$WORKSPACE_BIN/gh"
+GH_ARGS_LOG="$LOG" EXPECTED_WRITE_CFG="$WRITE_CFG" GIT_CONFIG_GLOBAL="$CONFIG" \
+	GH_WORKSPACE_BIN="$WORKSPACE_BIN/gh" GH_SYSTEM_BIN="$TMP/missing-gh" GH_WRITE_CONFIG="$WRITE_CFG" \
+	"$SCRIPT" --install >/dev/null
+helpers=$(git config --file "$CONFIG" --get-all credential.https://github.com.helper)
+printf '%s\n' "$helpers" | grep -F "$WORKSPACE_BIN/gh" >/dev/null 2>&1 || {
+	echo 'FAIL: workspace gh binary was not preferred by default' >&2
+	exit 1
+}
+
 GH_ARGS_LOG="$LOG" EXPECTED_WRITE_CFG="$WRITE_CFG" GIT_CONFIG_GLOBAL="$CONFIG" \
 	GH_BIN="$BIN/gh" GH_WRITE_CONFIG="$WRITE_CFG" "$SCRIPT" --install >/dev/null
 

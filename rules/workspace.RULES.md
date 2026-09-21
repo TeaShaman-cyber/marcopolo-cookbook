@@ -122,10 +122,54 @@ When GitHub work is performed through MarcoPolo, use the workspace GitHub
 profiles rather than guessing from whichever client connector happens to be
 available.
 
+
+### GitHub capability routing
+
+Choose the GitHub route by the provider capability required, not only by whether
+the operation is nominally a read or a write.
+
+Prefer the workspace-owned verified CLI when present:
+
+```bash
+GH_BIN=/workspace/.local/bin/gh
+[ -x "$GH_BIN" ] || GH_BIN=/usr/local/bin/gh
+```
+
+Use this matrix:
+
+| Operation | Normal route | Required proof |
+|---|---|---|
+| bounded repo/issue/PR read | native GitHub plugin, or `GH_CONFIG_DIR=/workspace/.config/gh` for workspace-local processing | smallest live read succeeds |
+| Projects V2 read | capability-verified Projects profile; currently `GH_CONFIG_DIR=/workspace/.config/gh-write` | `auth status` plus live Project probe succeeds |
+| explicitly authorized GitHub mutation | `GH_CONFIG_DIR=/workspace/.config/gh-write` | mutation plus exact remote readback |
+| authorized Projects V2 mutation | `gh-write` with verified Projects capability | Project mutation plus Project readback |
+| ordinary Git smart-HTTP | cookbook-managed credential helper pinned to `gh-write` | helper check; remote readback when freshness matters |
+
+The default MarcoPolo profile may use a GitHub App user token (`ghu_...`).
+Repository reads succeeding through that token do not prove Projects access.
+GitHub App user tokens do not expose classic OAuth scopes like a CLI OAuth
+token (`gho_...`), so an empty `X-OAuth-Scopes` header is not proof of no
+permissions. Likewise, human-account `admin` or `push` rights do not establish
+integration-token authority.
+
+Projects V2 is therefore a capability-specific exception to the simple
+read/write split. Verify it directly:
+
+```bash
+GH_CONFIG_DIR=/workspace/.config/gh-write "$GH_BIN" auth status -h github.com
+GH_CONFIG_DIR=/workspace/.config/gh-write "$GH_BIN" project list --owner TeaShaman-cyber --format json
+```
+
+Only treat Projects access as available after the live Project probe succeeds.
+A response with a positive `totalCount` but null Project nodes is a degraded
+authorization/capability signal, not evidence that the Projects do not exist.
+Do not use the default profile for a Project read merely because the operation
+is read-only.
+
 For reads through MarcoPolo:
 
 ```bash
-GH_CONFIG_DIR=/workspace/.config/gh gh ...
+GH_CONFIG_DIR=/workspace/.config/gh "$GH_BIN" ...
 ```
 
 The native ChatGPT GitHub plugin is also an allowed lightweight read route for
@@ -137,7 +181,7 @@ write authority or workspace persistence.
 For explicitly authorized writes through MarcoPolo:
 
 ```bash
-GH_CONFIG_DIR=/workspace/.config/gh-write gh ...
+GH_CONFIG_DIR=/workspace/.config/gh-write "$GH_BIN" ...
 ```
 
 MarcoPolo remains the default GitHub write route when it is suitable. The native
