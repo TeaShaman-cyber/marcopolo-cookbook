@@ -17,6 +17,17 @@ class WorkspaceRulesTest(unittest.TestCase):
         self.assertIn("Prefer disposable worktrees or short-lived branches", text)
         self.assertIn("remove them after verified merge", text)
 
+    def test_github_routes_are_capability_specific(self):
+        text = RULES.read_text(encoding="utf-8")
+
+        self.assertIn("GitHub capability routing", text)
+        self.assertIn("Projects V2 read", text)
+        self.assertIn("GH_CONFIG_DIR=/workspace/.config/gh-write", text)
+        self.assertIn("ghu_...", text)
+        self.assertIn("X-OAuth-Scopes", text)
+        self.assertIn("totalCount", text)
+        self.assertIn("/workspace/.local/bin/gh", text)
+
 
 if __name__ == "__main__":
     unittest.main()

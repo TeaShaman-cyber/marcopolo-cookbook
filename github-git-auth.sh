@@ -3,7 +3,9 @@ set -eu
 
 HOST=github.com
 WRITE_CFG=${GH_WRITE_CONFIG:-/workspace/.config/gh-write}
-GH_BIN=${GH_BIN:-/usr/local/bin/gh}
+WORKSPACE_GH_BIN=${GH_WORKSPACE_BIN:-/workspace/.local/bin/gh}
+SYSTEM_GH_BIN=${GH_SYSTEM_BIN:-/usr/local/bin/gh}
+if [ -n "${GH_BIN:-}" ]; then :; elif [ -x "$WORKSPACE_GH_BIN" ]; then GH_BIN=$WORKSPACE_GH_BIN; else GH_BIN=$SYSTEM_GH_BIN; fi
 KEY=credential.https://github.com.helper
 
 shell_quote() {
