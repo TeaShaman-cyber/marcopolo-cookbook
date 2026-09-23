@@ -15,6 +15,8 @@ RUNTIME_FILES = (
     "status.sh",
     "status.py",
     "runtime-bindings.sh",
+    "local-projection.sh",
+    "local_projection.py",
 )
 
 

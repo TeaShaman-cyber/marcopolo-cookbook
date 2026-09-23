@@ -35,5 +35,10 @@ for arg in "$@"; do
 	esac
 done
 
+SEARCH_CORPUS=$CORPUS
+if LOCAL_CORPUS=$("$TOOL_DIR/local-projection.sh" --path); then
+	SEARCH_CORPUS=$LOCAL_CORPUS
+fi
+
 cd "$ROOT"
-exec python3 -m session_search.search "$@" --corpus "$CORPUS"
+exec python3 -m session_search.search "$@" --corpus "$SEARCH_CORPUS"
