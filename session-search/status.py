@@ -18,13 +18,17 @@ RUNTIME_FILES = (
 )
 
 
-def _run_git(root: pathlib.Path, *args: str) -> str | None:
-    proc = subprocess.run(
+def _run_git_result(root: pathlib.Path, *args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
         ["git", "-C", str(root), *args],
         text=True,
         capture_output=True,
         check=False,
     )
+
+
+def _run_git(root: pathlib.Path, *args: str) -> str | None:
+    proc = _run_git_result(root, *args)
     return proc.stdout.strip() if proc.returncode == 0 else None
 
 
@@ -72,7 +76,15 @@ def _implementation(root: pathlib.Path) -> dict[str, Any]:
     if head is None:
         return {"state": "UNKNOWN", "root": str(root), "reason": "git_head_unavailable"}
 
-    relevant_dirty = _run_git(root, "status", "--porcelain", "--", "session_search")
+    status_proc = _run_git_result(root, "status", "--porcelain", "--", "session_search")
+    if status_proc.returncode != 0:
+        return {
+            "state": "UNKNOWN",
+            "root": str(root),
+            "head": head,
+            "reason": "git_status_unavailable",
+        }
+    relevant_dirty = status_proc.stdout.strip()
     expected_head = os.environ.get("SESSION_SEARCH_IMPLEMENTATION_HEAD") or None
     expected_ref = os.environ.get("SESSION_SEARCH_IMPLEMENTATION_REF") or None
     bound_ref_head = _run_git(root, "rev-parse", expected_ref) if expected_ref else None

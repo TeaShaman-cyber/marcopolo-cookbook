@@ -15,6 +15,8 @@ class WorkspaceRulesTest(unittest.TestCase):
         self.assertIn("/workspace/tools/session-search/status.sh --json", text)
         self.assertIn("repository-currentness route", text)
         self.assertIn("local route coherence", text)
+        self.assertIn("tree is Git-clean", text)
+        self.assertNotIn("locally usable/clean", text)
         self.assertIn("/workspace/tools/session-search/acceptance.sh", text)
         self.assertIn("Do not put full acceptance/rebuild", text)
 

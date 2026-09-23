@@ -199,6 +199,74 @@ class SessionSearchStatusTests(unittest.TestCase):
             self.assertEqual(payload["implementation"]["state"], "STALE")
             self.assertEqual(payload["implementation"]["reason"], "head_mismatch")
 
+    def test_acceptance_uses_same_freshness_gate_as_search(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            runtime = self.make_runtime(root)
+            impl, _head = self.make_implementation(root)
+            corpus = self.make_corpus(root)
+            (runtime / "runtime.env").write_text(
+                f"SESSION_SEARCH_CORPUS={corpus}\n"
+                f"SESSION_SEARCH_IMPLEMENTATION_ROOT={impl}\n"
+                f"SESSION_SEARCH_IMPLEMENTATION_HEAD={'0' * 40}\n",
+                encoding="utf-8",
+            )
+            env = os.environ.copy()
+            env["SESSION_SEARCH_CANONICAL_DIR"] = str(ROOT)
+            proc = subprocess.run(
+                [str(runtime / "acceptance.sh"), "--query", "fixture"],
+                text=True,
+                capture_output=True,
+                env=env,
+            )
+            self.assertEqual(proc.returncode, 69)
+            self.assertIn("LOCAL_FRESHNESS_CHECK_FAILED", proc.stderr)
+            self.assertNotIn("SESSION_SEARCH_ACCEPTANCE mode=", proc.stdout)
+
+    def test_explicit_canonical_dir_wins_over_runtime_env_and_exposes_drift(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            runtime = self.make_runtime(root)
+            impl, _head = self.make_implementation(root)
+            corpus = self.make_corpus(root)
+            (runtime / "runtime.env").write_text(
+                f"SESSION_SEARCH_CORPUS={corpus}\n"
+                f"SESSION_SEARCH_IMPLEMENTATION_ROOT={impl}\n"
+                f"SESSION_SEARCH_CANONICAL_DIR={runtime}\n",
+                encoding="utf-8",
+            )
+            (runtime / "search.sh").write_text(
+                (runtime / "search.sh").read_text(encoding="utf-8") + "\n# drift\n",
+                encoding="utf-8",
+            )
+            env = os.environ.copy()
+            env["SESSION_SEARCH_CANONICAL_DIR"] = str(ROOT)
+            proc = subprocess.run(
+                [str(runtime / "status.sh"), "--json"],
+                text=True,
+                capture_output=True,
+                env=env,
+            )
+            payload = json.loads(proc.stdout)
+            self.assertEqual(proc.returncode, 69)
+            self.assertEqual(payload["runtime_projection"]["state"], "STALE")
+            self.assertIn("runtime_projection", payload["blockers"])
+
+    def test_git_status_failure_is_unknown_not_clean(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            runtime = self.make_runtime(root)
+            impl, _head = self.make_implementation(root)
+            corpus = self.make_corpus(root)
+            (impl / ".git" / "index").write_bytes(b"broken-index")
+            proc, payload = self.run_status(runtime, impl, corpus)
+            self.assertEqual(proc.returncode, 69)
+            self.assertEqual(payload["implementation"]["state"], "UNKNOWN")
+            self.assertEqual(
+                payload["implementation"]["reason"], "git_status_unavailable"
+            )
+            self.assertIn("implementation", payload["blockers"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -50,6 +50,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 session_search_load_runtime "$RUNTIME_ENV"
+"$TOOL_DIR/status.sh" --check-search || exit $?
 ROOT=${SESSION_SEARCH_IMPLEMENTATION_ROOT:-/workspace/theseus-session-search-lab}
 CORPUS=${SESSION_SEARCH_CORPUS:-}
 if [ -z "$CORPUS" ]; then

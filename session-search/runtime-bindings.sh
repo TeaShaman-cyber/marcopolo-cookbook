@@ -12,6 +12,8 @@ session_search_load_runtime() {
 	_ss_impl_head=${SESSION_SEARCH_IMPLEMENTATION_HEAD-}
 	_ss_impl_ref_set=${SESSION_SEARCH_IMPLEMENTATION_REF+x}
 	_ss_impl_ref=${SESSION_SEARCH_IMPLEMENTATION_REF-}
+	_ss_canonical_dir_set=${SESSION_SEARCH_CANONICAL_DIR+x}
+	_ss_canonical_dir=${SESSION_SEARCH_CANONICAL_DIR-}
 
 	set -a
 	. "$runtime_env"
@@ -33,7 +35,12 @@ session_search_load_runtime() {
 		SESSION_SEARCH_IMPLEMENTATION_REF=$_ss_impl_ref
 		export SESSION_SEARCH_IMPLEMENTATION_REF
 	fi
+	if [ "$_ss_canonical_dir_set" = x ]; then
+		SESSION_SEARCH_CANONICAL_DIR=$_ss_canonical_dir
+		export SESSION_SEARCH_CANONICAL_DIR
+	fi
 
 	unset _ss_corpus_set _ss_corpus _ss_impl_root_set _ss_impl_root
 	unset _ss_impl_head_set _ss_impl_head _ss_impl_ref_set _ss_impl_ref
+	unset _ss_canonical_dir_set _ss_canonical_dir
 }

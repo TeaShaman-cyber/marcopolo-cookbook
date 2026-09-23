@@ -24,9 +24,9 @@ Canonical interactive route:
 The search wrapper owns corpus selection and performs a cheap **local freshness
 preflight** before invoking Session Search. That preflight establishes only that
 the runtime helper projection matches the local cookbook source, the bound
-Session Search implementation is locally usable/clean and satisfies any
-configured local HEAD/ref pin, and the explicitly bound corpus is available
-with an observable generation token. It performs no network access and no full
+Session Search implementation is present, its `session_search` tree is Git-clean,
+any configured local HEAD/ref pin matches, and the explicitly bound corpus is
+available with an observable generation token. It performs no network access and no full
 corpus integrity/rebuild verification.
 
 For explicit local diagnostics, use:
