@@ -64,9 +64,24 @@ memory and it is not authority for current runtime state, permissions, or tool
 capabilities.
 
 A search miss means `UNKNOWN`, not proof of absence, especially for a
-`PARTIAL_SESSION_SLICE` or otherwise incomplete corpus. If Session Search is
-unavailable or its required freshness/integrity evidence cannot be established,
-state that explicitly.
+`PARTIAL_SESSION_SLICE` or otherwise incomplete corpus. A zero-hit default
+lexical query is also not enough to claim a corpus coverage gap: default search
+is intentionally strict and can miss when relevant evidence is split across
+messages, morphology differs, or one extra token is absent.
+
+Before claiming that relevant history is absent, use a bounded **LIGHT_SONAR**
+retrieval preflight: try 3-7 controlled probes, including short discriminating
+anchors and at least one functional rephrase that does not merely repeat the
+expected attractor wording. If strict search is empty or weak, retry with
+`--recall` and compare the returned sessions/fragments. Repeated retrieval of
+the same fragment is not independent evidence. Escalate to broader/federated
+reconstruction only when these bounded probes remain insufficient; ordinary
+queries must not trigger an unbounded memory sweep.
+
+Classify the result separately: lexical retrieval false negative, corpus/capture
+coverage gap, conflict, or `UNKNOWN_WITHIN_CURRENT_SURFACE`. If Session Search
+is unavailable or its required freshness/integrity evidence cannot be
+established, state that explicitly.
 
 ## Repository currentness / canonical checkout
 
