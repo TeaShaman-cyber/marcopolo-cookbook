@@ -29,6 +29,16 @@ def _run_git_result(root: pathlib.Path, *args: str) -> subprocess.CompletedProce
     )
 
 
+def _run_git_bytes_result(
+    root: pathlib.Path, *args: str
+) -> subprocess.CompletedProcess[bytes]:
+    return subprocess.run(
+        ["git", "-C", str(root), *args],
+        capture_output=True,
+        check=False,
+    )
+
+
 def _run_git(root: pathlib.Path, *args: str) -> str | None:
     proc = _run_git_result(root, *args)
     return proc.stdout.strip() if proc.returncode == 0 else None
@@ -43,18 +53,73 @@ def _file_sha256(path: pathlib.Path) -> str:
 
 
 def _runtime_projection(
-    tool_dir: pathlib.Path, canonical_dir: pathlib.Path
+    tool_dir: pathlib.Path,
+    canonical_dir: pathlib.Path,
+    canonical_ref: str | None,
 ) -> dict[str, Any]:
+    if not canonical_dir.is_dir():
+        return {"state": "UNKNOWN", "mismatches": ["canonical_dir_missing"]}
+
+    checkout_head = _run_git(canonical_dir, "rev-parse", "HEAD")
+    git_root_raw = _run_git(canonical_dir, "rev-parse", "--show-toplevel")
+    if git_root_raw is not None and canonical_ref:
+        canonical_ref_head = _run_git(canonical_dir, "rev-parse", canonical_ref)
+        if canonical_ref_head is None:
+            return {
+                "state": "UNKNOWN",
+                "mismatches": ["canonical_ref_unavailable"],
+                "canonical_ref": canonical_ref,
+                "canonical_ref_head": None,
+                "checkout_head": checkout_head,
+                "source_mode": "git_ref",
+            }
+        git_root = pathlib.Path(git_root_raw).resolve()
+        try:
+            prefix = canonical_dir.resolve().relative_to(git_root)
+        except ValueError:
+            return {
+                "state": "UNKNOWN",
+                "mismatches": ["canonical_dir_outside_git_root"],
+                "canonical_ref": canonical_ref,
+                "canonical_ref_head": canonical_ref_head,
+                "checkout_head": checkout_head,
+                "source_mode": "git_ref",
+            }
+
+        mismatches: list[str] = []
+        for name in RUNTIME_FILES:
+            target = tool_dir / name
+            blob_path = (prefix / name).as_posix()
+            source = _run_git_bytes_result(
+                canonical_dir, "show", f"{canonical_ref}:{blob_path}"
+            )
+            if source.returncode != 0 or not target.is_file():
+                mismatches.append(name)
+                continue
+            if hashlib.sha256(source.stdout).hexdigest() != _file_sha256(target):
+                mismatches.append(name)
+        return {
+            "state": "MATCH" if not mismatches else "STALE",
+            "mismatches": mismatches,
+            "canonical_ref": canonical_ref,
+            "canonical_ref_head": canonical_ref_head,
+            "canonical_head": canonical_ref_head,
+            "checkout_head": checkout_head,
+            "source_mode": "git_ref",
+        }
+
     if tool_dir.resolve() == canonical_dir.resolve():
         return {
             "state": "SOURCE",
             "mismatches": [],
-            "canonical_head": _run_git(canonical_dir, "rev-parse", "HEAD"),
+            "canonical_ref": None,
+            "canonical_ref_head": None,
+            "canonical_head": checkout_head,
+            "checkout_head": checkout_head,
+            "source_mode": "directory",
         }
-    if not canonical_dir.is_dir():
-        return {"state": "UNKNOWN", "mismatches": ["canonical_dir_missing"]}
 
-    mismatches: list[str] = []
+    mismatches = []
     for name in RUNTIME_FILES:
         source = canonical_dir / name
         target = tool_dir / name
@@ -66,7 +131,11 @@ def _runtime_projection(
     return {
         "state": "MATCH" if not mismatches else "STALE",
         "mismatches": mismatches,
-        "canonical_head": _run_git(canonical_dir, "rev-parse", "HEAD"),
+        "canonical_ref": None,
+        "canonical_ref_head": None,
+        "canonical_head": checkout_head,
+        "checkout_head": checkout_head,
+        "source_mode": "directory",
     }
 
 
@@ -172,6 +241,9 @@ def collect() -> dict[str, Any]:
             "/workspace/marcopolo-cookbook/session-search",
         )
     )
+    canonical_ref = (
+        os.environ.get("SESSION_SEARCH_CANONICAL_REF", "origin/main") or None
+    )
     implementation_root = pathlib.Path(
         os.environ.get(
             "SESSION_SEARCH_IMPLEMENTATION_ROOT",
@@ -180,7 +252,7 @@ def collect() -> dict[str, Any]:
     )
     corpus_raw = os.environ.get("SESSION_SEARCH_CORPUS")
 
-    runtime = _runtime_projection(tool_dir, canonical_dir)
+    runtime = _runtime_projection(tool_dir, canonical_dir, canonical_ref)
     implementation = _implementation(implementation_root)
     corpus = _corpus(pathlib.Path(corpus_raw) if corpus_raw else None)
 

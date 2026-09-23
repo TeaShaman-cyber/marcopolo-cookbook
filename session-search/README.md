@@ -94,13 +94,19 @@ The tracked helper source lives in `marcopolo-cookbook/session-search/`. Project
 it into `/workspace/tools/session-search` with:
 
 ```bash
-/workspace/marcopolo-cookbook/session-search/materialize-runtime.sh
+/workspace/marcopolo-cookbook/session-search/materialize-runtime.sh --ref origin/main
 ```
 
-The materializer replaces only tracked helper files and deliberately preserves
-the local/private `runtime.env`. Runtime helpers compare themselves with the
-local canonical cookbook source during normal preflight, so partial or stale
-materialization fails closed.
+For an operational projection, materialize from the same selected Git ref that
+preflight will verify. The no-`--ref` form remains available for deliberate
+branch/development worktree testing. The materializer replaces only tracked helper
+files and deliberately preserves the local/private `runtime.env`. Runtime helpers
+verify themselves against the
+selected local Git ref (`SESSION_SEARCH_CANONICAL_REF`, default `origin/main`)
+when the canonical cookbook source is Git-backed. The checkout HEAD is reported
+separately and is not freshness authority. Ordinary preflight performs no fetch;
+remote freshness remains the explicit repository-currentness step. Non-Git
+canonical directories retain direct file-comparison fallback semantics.
 
 ## Reference discovery
 

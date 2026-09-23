@@ -65,6 +65,7 @@ class SessionSearchStatusTests(unittest.TestCase):
         env.update(
             {
                 "SESSION_SEARCH_CANONICAL_DIR": str(ROOT),
+                "SESSION_SEARCH_CANONICAL_REF": "",
                 "SESSION_SEARCH_IMPLEMENTATION_ROOT": str(impl),
                 "SESSION_SEARCH_CORPUS": str(corpus),
             }
@@ -97,6 +98,202 @@ class SessionSearchStatusTests(unittest.TestCase):
             self.assertEqual(
                 payload["implementation"]["remote_currentness"], "NOT_CHECKED"
             )
+
+    def test_git_canonical_ref_detects_stale_runtime_even_when_checkout_matches(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            runtime = self.make_runtime(root)
+            impl, _head = self.make_implementation(root)
+            corpus = self.make_corpus(root)
+            canonical = root / "canonical"
+            canonical.mkdir()
+            for name in (
+                "search.sh",
+                "acceptance.sh",
+                "status.sh",
+                "status.py",
+                "runtime-bindings.sh",
+                "local-projection.sh",
+                "local_projection.py",
+            ):
+                (canonical / name).write_bytes((ROOT / name).read_bytes())
+            subprocess.run(
+                ["git", "init", "-q", "-b", "main", str(canonical)], check=True
+            )
+            env = os.environ.copy()
+            env.update(
+                {
+                    "GIT_AUTHOR_NAME": "test",
+                    "GIT_AUTHOR_EMAIL": "test@example.invalid",
+                    "GIT_COMMITTER_NAME": "test",
+                    "GIT_COMMITTER_EMAIL": "test@example.invalid",
+                }
+            )
+            subprocess.run(["git", "-C", str(canonical), "add", "."], check=True)
+            subprocess.run(
+                ["git", "-C", str(canonical), "commit", "-q", "-m", "stale checkout"],
+                check=True,
+                env=env,
+            )
+            stale_head = subprocess.check_output(
+                ["git", "-C", str(canonical), "rev-parse", "HEAD"], text=True
+            ).strip()
+            (canonical / "search.sh").write_text(
+                (canonical / "search.sh").read_text(encoding="utf-8")
+                + "\n# authoritative ref change\n",
+                encoding="utf-8",
+            )
+            subprocess.run(
+                ["git", "-C", str(canonical), "add", "search.sh"], check=True
+            )
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(canonical),
+                    "commit",
+                    "-q",
+                    "-m",
+                    "authoritative change",
+                ],
+                check=True,
+                env=env,
+            )
+            authoritative_head = subprocess.check_output(
+                ["git", "-C", str(canonical), "rev-parse", "HEAD"], text=True
+            ).strip()
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(canonical),
+                    "update-ref",
+                    "refs/remotes/origin/main",
+                    authoritative_head,
+                ],
+                check=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(canonical), "checkout", "-q", "--detach", stale_head],
+                check=True,
+            )
+
+            proc, payload = self.run_status(
+                runtime,
+                impl,
+                corpus,
+                SESSION_SEARCH_CANONICAL_DIR=str(canonical),
+                SESSION_SEARCH_CANONICAL_REF="origin/main",
+            )
+            self.assertEqual(proc.returncode, 69)
+            self.assertEqual(payload["runtime_projection"]["state"], "STALE")
+            self.assertEqual(
+                payload["runtime_projection"]["canonical_ref"], "origin/main"
+            )
+            self.assertEqual(
+                payload["runtime_projection"]["canonical_ref_head"], authoritative_head
+            )
+            self.assertEqual(payload["runtime_projection"]["checkout_head"], stale_head)
+
+    def test_git_canonical_ref_accepts_current_runtime_with_stale_checkout(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            runtime = self.make_runtime(root)
+            impl, _head = self.make_implementation(root)
+            corpus = self.make_corpus(root)
+            canonical = root / "canonical"
+            canonical.mkdir()
+            for name in (
+                "search.sh",
+                "acceptance.sh",
+                "status.sh",
+                "status.py",
+                "runtime-bindings.sh",
+                "local-projection.sh",
+                "local_projection.py",
+            ):
+                (canonical / name).write_bytes((ROOT / name).read_bytes())
+            subprocess.run(
+                ["git", "init", "-q", "-b", "main", str(canonical)], check=True
+            )
+            env = os.environ.copy()
+            env.update(
+                {
+                    "GIT_AUTHOR_NAME": "test",
+                    "GIT_AUTHOR_EMAIL": "test@example.invalid",
+                    "GIT_COMMITTER_NAME": "test",
+                    "GIT_COMMITTER_EMAIL": "test@example.invalid",
+                }
+            )
+            subprocess.run(["git", "-C", str(canonical), "add", "."], check=True)
+            subprocess.run(
+                ["git", "-C", str(canonical), "commit", "-q", "-m", "stale checkout"],
+                check=True,
+                env=env,
+            )
+            stale_head = subprocess.check_output(
+                ["git", "-C", str(canonical), "rev-parse", "HEAD"], text=True
+            ).strip()
+            (canonical / "search.sh").write_text(
+                (canonical / "search.sh").read_text(encoding="utf-8")
+                + "\n# authoritative ref change\n",
+                encoding="utf-8",
+            )
+            subprocess.run(
+                ["git", "-C", str(canonical), "add", "search.sh"], check=True
+            )
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(canonical),
+                    "commit",
+                    "-q",
+                    "-m",
+                    "authoritative change",
+                ],
+                check=True,
+                env=env,
+            )
+            authoritative_head = subprocess.check_output(
+                ["git", "-C", str(canonical), "rev-parse", "HEAD"], text=True
+            ).strip()
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(canonical),
+                    "update-ref",
+                    "refs/remotes/origin/main",
+                    authoritative_head,
+                ],
+                check=True,
+            )
+            runtime_search = subprocess.check_output(
+                ["git", "-C", str(canonical), "show", "origin/main:search.sh"]
+            )
+            (runtime / "search.sh").write_bytes(runtime_search)
+            subprocess.run(
+                ["git", "-C", str(canonical), "checkout", "-q", "--detach", stale_head],
+                check=True,
+            )
+
+            proc, payload = self.run_status(
+                runtime,
+                impl,
+                corpus,
+                SESSION_SEARCH_CANONICAL_DIR=str(canonical),
+                SESSION_SEARCH_CANONICAL_REF="origin/main",
+            )
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            self.assertEqual(payload["runtime_projection"]["state"], "MATCH")
+            self.assertEqual(
+                payload["runtime_projection"]["canonical_ref"], "origin/main"
+            )
+            self.assertEqual(
+                payload["runtime_projection"]["canonical_ref_head"], authoritative_head
+            )
+            self.assertEqual(payload["runtime_projection"]["checkout_head"], stale_head)
 
     def test_stale_runtime_projection_blocks_search_safety(self):
         with tempfile.TemporaryDirectory() as td:
@@ -172,6 +369,7 @@ class SessionSearchStatusTests(unittest.TestCase):
             env.update(
                 {
                     "SESSION_SEARCH_CANONICAL_DIR": str(ROOT),
+                    "SESSION_SEARCH_CANONICAL_REF": "",
                     "SESSION_SEARCH_CORPUS": str(override_corpus),
                 }
             )
@@ -213,6 +411,7 @@ class SessionSearchStatusTests(unittest.TestCase):
             )
             env = os.environ.copy()
             env["SESSION_SEARCH_CANONICAL_DIR"] = str(ROOT)
+            env["SESSION_SEARCH_CANONICAL_REF"] = ""
             proc = subprocess.run(
                 [str(runtime / "acceptance.sh"), "--query", "fixture"],
                 text=True,
@@ -241,6 +440,7 @@ class SessionSearchStatusTests(unittest.TestCase):
             )
             env = os.environ.copy()
             env["SESSION_SEARCH_CANONICAL_DIR"] = str(ROOT)
+            env["SESSION_SEARCH_CANONICAL_REF"] = ""
             proc = subprocess.run(
                 [str(runtime / "status.sh"), "--json"],
                 text=True,

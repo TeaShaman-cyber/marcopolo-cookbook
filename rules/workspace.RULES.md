@@ -22,11 +22,15 @@ Canonical interactive route:
 ```
 
 The search wrapper owns corpus selection and performs a cheap **local freshness
-preflight** before invoking Session Search. That preflight establishes only that
-the runtime helper projection matches the local cookbook source, the bound
-Session Search implementation is present, its `session_search` tree is Git-clean,
-any configured local HEAD/ref pin matches, and the explicitly bound corpus is
-available with an observable generation token. After that preflight, normal search
+preflight** before invoking Session Search. For a Git-backed cookbook source, the
+runtime helper projection is checked against the selected local canonical Git ref
+(normally `origin/main`), not against whichever branch happens to be checked out;
+the checkout HEAD is diagnostic only. That preflight establishes only that the
+helper projection matches that locally available ref, the bound Session Search
+implementation is present, its `session_search` tree is Git-clean, any configured
+local HEAD/ref pin matches, and the explicitly bound corpus is available with an
+observable generation token. It performs no fetch: remote ref freshness still
+requires the repository-currentness route below. After that preflight, normal search
 may use a freshness-bound disposable local read projection for performance. That
 cache is never authority: if refresh/validation fails, search reports a degraded
 route on stderr and falls back to the explicitly bound durable corpus. It performs

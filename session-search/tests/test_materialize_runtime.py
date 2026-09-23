@@ -38,6 +38,25 @@ class SessionSearchRuntimeMaterializerTests(unittest.TestCase):
                     (ROOT / name).read_bytes(), (target / name).read_bytes()
                 )
 
+    def test_materializer_can_project_exact_git_ref_without_using_checkout_bytes(self):
+        with tempfile.TemporaryDirectory() as td:
+            target = pathlib.Path(td) / "runtime"
+            proc = subprocess.run(
+                [str(MATERIALIZE), "--ref", "HEAD", str(target)],
+                text=True,
+                capture_output=True,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            self.assertIn(
+                "SESSION_SEARCH_RUNTIME_MATERIALIZED source=HEAD@", proc.stdout
+            )
+            repo_root = ROOT.parent
+            for name in FILES:
+                expected = subprocess.check_output(
+                    ["git", "-C", str(repo_root), "show", f"HEAD:session-search/{name}"]
+                )
+                self.assertEqual(expected, (target / name).read_bytes())
+
 
 if __name__ == "__main__":
     unittest.main()
