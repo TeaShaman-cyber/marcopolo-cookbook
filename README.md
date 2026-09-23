@@ -31,6 +31,7 @@ A path, dependency, or artifact observed in one runtime is not assumed to exist 
 - [Lightweight development gate](tools/dev/README.md) — pinned standalone editor/linters with NFS-light caches and changed-file deterministic local QA.
 - [Verification ladder](docs/operations/verification-ladder.md) — L0 MarcoPolo fast feedback, L1 hosted CI, L2 Codespace heavy debugging, and the learning loop that promotes recurring findings into executable checks.
 - [Repository lifecycle](docs/operations/lifecycle.md) — issue/PR/Project disposition, migration, acceptance, release, and exact-readback boundaries; `tools/dev/check` is the canonical first local QA gate.
+- [Changelog](CHANGELOG.md) — versioned release scope, verification snapshot, and known debt/backlog that remains open after publication.
 - [Jester forum notes](jester-forum/README.md) — bounded forum workflow notes.
 
 Additional top-level scripts provide GitHub/wiki wrappers and access checks used by the workspace.
@@ -49,6 +50,10 @@ Secrets, tokens, cookies, auth caches, `.env` files, private keys, and generated
 ## Repository hygiene
 
 Generated dependencies and caches such as `node_modules/`, `__pycache__/`, Python bytecode, virtual environments, logs, and unreviewed `mcporter/traces/` are excluded from version control.
+
+## Releases and versioning
+
+The cookbook follows Semantic Versioning. `0.x` releases are reviewed operational snapshots, not a claim of stable `1.0` interfaces or completed research. A GitHub Release/tag is a publication boundary separate from QA, merge, migration, and scientific acceptance. Release scope and known limitations are recorded in [CHANGELOG.md](CHANGELOG.md).
 
 ## Updating the cookbook
 
