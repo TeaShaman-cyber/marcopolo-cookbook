@@ -41,8 +41,8 @@ Use only the stages that are relevant to the artifact:
       -> local deterministic QA
       -> domain/runtime verification when required
       -> independent review when required
-      -> explicit acceptance decision
-      -> promotion / merge when authorized
+      -> acceptance criteria / required decision gates
+      -> promotion / merge when covered by current authorization or an explicit gate
       -> release / publication when applicable and authorized
       -> terminal disposition
       -> exact remote readback
@@ -50,12 +50,20 @@ Use only the stages that are relevant to the artifact:
 The boundaries remain explicit:
 
     QA PASS != acceptance authority
-    review approval != merge permission
+    QA/review approval != permission by itself
     merge capability != release permission
     release completion != scientific acceptance
 
 The canonical first local QA gate is documented in tools/dev/README.md.
 External runtime, provider, GitHub, and Project checks remain separate witnesses.
+
+For a project-owned repository, current user authorization of the underlying work may
+cover routine PR merge without a redundant second approval when scope is unchanged,
+the authoritative base/currentness and exact PR head are verified, required QA/CI
+and review gates pass, no unresolved P0/P1/blocking finding remains, and the merge
+does not itself cross a separately protected authority, permission, canonical-source,
+external publication, or release boundary. QA or review never creates that permission;
+it only satisfies evidence gates inside authorization that already exists.
 
 ### Independent-review availability states
 
@@ -129,8 +137,10 @@ Executor self-report alone is insufficient when independent readback exists.
 
 ## Automation boundary
 
-Automate repetitive checks and already-authorized mechanics, not judgment,
-permission, or consequential promotion.
+Automate repetitive checks and already-authorized mechanics, including routine
+project-owned PR promotion when the Project Contract guards hold. Do not automate
+new permission, judgment, external publication/release, protected authority changes,
+or other consequential promotion.
 
 A roadmap verifier may report PASS / DRIFT / UNAVAILABLE, but remains read-only.
 Its result can identify lifecycle drift; it cannot authorize closing issues,

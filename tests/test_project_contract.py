@@ -8,17 +8,18 @@ README = ROOT / "project" / "README.md"
 
 
 class ProjectContractSourceTest(unittest.TestCase):
-    def test_v7_source_has_required_project_level_contract(self):
+    def test_v8_source_has_required_project_level_contract(self):
         text = CONTRACT.read_text(encoding="utf-8")
 
         self.assertTrue(text.startswith("PROJECT_CONTRACT=<|"))
-        self.assertIn('"Revision"->"2026-09-thin-router-v7"', text)
-        self.assertIn('"Reply"->"PC_OK_V7"', text)
+        self.assertIn('"Revision"->"2026-09-thin-router-v8"', text)
+        self.assertIn('"Reply"->"PC_OK_V8"', text)
         self.assertIn('"CanonicalSource"', text)
         self.assertIn('"GitHubRouting"-><|', text)
         self.assertIn('"ChangeControl"-><|', text)
         self.assertIn('"IssueFirst"', text)
         self.assertIn('"ProjectOwnedPermission"', text)
+        self.assertIn('"RoutinePromotion"', text)
         self.assertIn('"ExternalRepositories"', text)
         self.assertIn('"Precedence"', text)
         self.assertEqual(text.count("<|"), text.count("|>"))
@@ -26,11 +27,19 @@ class ProjectContractSourceTest(unittest.TestCase):
     def test_project_owned_and_external_issue_authority_are_distinct(self):
         text = CONTRACT.read_text(encoding="utf-8")
 
-        self.assertIn(
-            "Frequent narrow Issues are acceptable for durable traceability", text
-        )
-        self.assertIn("Require explicit mutation-specific user permission", text)
-        self.assertIn("does not imply permission to publish externally", text)
+        self.assertIn("Frequent narrow Issues are acceptable for traceability", text)
+        self.assertIn("requiring explicit write permission", text)
+        self.assertIn("does not imply external publication permission", text)
+
+    def test_routine_project_owned_promotion_reuses_current_work_authorization(self):
+        text = CONTRACT.read_text(encoding="utf-8")
+
+        self.assertIn("no second merge approval", text)
+        self.assertIn("base/currentness and exact head are verified", text)
+        self.assertIn("required QA/CI/review gates pass", text)
+        self.assertIn("no P0/P1/blocker remains", text)
+        self.assertIn("external publication/release", text)
+        self.assertIn("protected authority change", text)
 
     def test_project_contract_precedes_workspace_rules_for_same_concern(self):
         text = CONTRACT.read_text(encoding="utf-8")
@@ -77,7 +86,7 @@ class ProjectContractSourceTest(unittest.TestCase):
 
         self.assertIn("project/project-contract.wl", text)
         self.assertIn("PROJECT_CONTRACT_PROBE", text)
-        self.assertIn("PC_OK_V7", text)
+        self.assertIn("PC_OK_V8", text)
         self.assertIn("Issue #31", text)
 
 

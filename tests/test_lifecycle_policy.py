@@ -59,7 +59,7 @@ class LifecyclePolicyContractTest(unittest.TestCase):
             "canonical first local QA gate",
             "clean worktree",
             "identity for the complete tested content",
-            "QA PASS does not authorize",
+            "QA PASS` does not by itself authorize",
             "network/runtime witnesses",
             "Project metadata",
         ):

@@ -89,8 +89,9 @@ MarcoPolo control-plane behavior, MCP/provider state, or other external
 surfaces. Project metadata is remote coordination state and is not established
 by this local gate.
 
-`QA PASS does not authorize` issue closure, migration, PR merge, release,
-Project mutation, or any other consequential lifecycle transition.
+`QA PASS` does not by itself authorize issue closure, migration, PR merge,
+release, Project mutation, or any other lifecycle transition. Permission comes from
+current user intent / established workflow; QA only proves the checks it actually ran.
 
 If required Codex review is explicitly refused because the code-review quota is
 exhausted, record `CODEX_REVIEW_BLOCKED_QUOTA`. The local QA result remains valid
