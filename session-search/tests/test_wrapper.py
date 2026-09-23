@@ -12,6 +12,8 @@ class SessionSearchWrapperContractTests(unittest.TestCase):
         self.assertIn("SESSION_SEARCH_CORPUS", text)
         self.assertIn("runtime.env", text)
         self.assertIn("--corpus", text)
+        self.assertIn("status.sh", text)
+        self.assertIn("SESSION_SEARCH_IMPLEMENTATION_ROOT", text)
         self.assertNotIn("session-search-full.sqlite3", text)
         self.assertNotIn(" --db ", text)
 
@@ -26,6 +28,8 @@ class SessionSearchWrapperContractTests(unittest.TestCase):
         self.assertIn("runtime.env", text)
         self.assertIn("SESSION_SEARCH_CORPUS", text)
         self.assertIn("/workspace/tools/search/search.sh", text)
+        self.assertIn("status.sh", text)
+        self.assertIn("LOCAL", text)
 
 
 if __name__ == "__main__":

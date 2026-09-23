@@ -10,25 +10,73 @@ Session history is evidence, not semantic memory. The accepted artifacts are dur
 /workspace/tools/session-search/search.sh 'query terms'
 ```
 
-The wrapper is **corpus-first**. It never scans `/workspace` to guess where private evidence lives. Corpus location resolves explicitly in this order:
+This remains the one-command interactive route. `search.sh` first runs a cheap
+local freshness preflight and then invokes the bound Session Search
+implementation against the explicitly selected cumulative corpus. Normal search
+does **not** perform network access, full corpus verification, or rebuild.
 
-1. active `SESSION_SEARCH_CORPUS` environment variable;
-2. local restart-safe `/workspace/tools/session-search/runtime.env` binding;
-3. deterministic `CORPUS_LOCATION_UNRESOLVED` failure.
-
-Example local binding (do not commit private paths):
+The runtime binding is loaded from `/workspace/tools/session-search/runtime.env`.
+Already exported values take precedence; `runtime.env` fills only missing known
+bindings so status/search/acceptance resolve the same state. The important
+bindings are:
 
 ```bash
-cat > /workspace/tools/session-search/runtime.env <<'EOF'
 SESSION_SEARCH_CORPUS=/private/path/session-search-corpus
-export SESSION_SEARCH_CORPUS
-EOF
-chmod 600 /workspace/tools/session-search/runtime.env
+SESSION_SEARCH_IMPLEMENTATION_ROOT=/workspace/path/to/clean/session-search-checkout
+# Optional exact/local pins:
+SESSION_SEARCH_IMPLEMENTATION_HEAD=<full-git-oid>
+SESSION_SEARCH_IMPLEMENTATION_REF=origin/main
+# Missing bindings are loaded from runtime.env; already exported values win.
 ```
 
-An explicitly exported `SESSION_SEARCH_CORPUS` wins over `runtime.env`. The wrapper validates the cumulative corpus markers before invoking `session_search.search --corpus`.
+`SESSION_SEARCH_IMPLEMENTATION_HEAD` makes the default local preflight require
+an exact checked-out commit. `SESSION_SEARCH_IMPLEMENTATION_REF` makes the
+default preflight compare HEAD with the locally known ref; `status.sh --refresh`
+first refreshes that configured ref and then compares again. Without an
+authoritative implementation ref, remote currentness is `UNKNOWN`, not inferred.
 
-For a deliberate legacy/scratch projection, bypass the wrapper and use the module directly with `--db PATH`.
+The wrapper is **corpus-first**. It never scans `/workspace` to guess where
+private evidence lives. Corpus location resolves explicitly in this order:
+
+1. active `SESSION_SEARCH_CORPUS` environment variable;
+2. local restart-safe `runtime.env` binding;
+3. deterministic `CORPUS_LOCATION_UNRESOLVED` failure.
+
+The cheap status path observes the accepted-artifact filename set plus SQLite
+projection metadata and emits a deterministic change token. This token is for
+freshness/cache invalidation; it is **not** a replacement for accepted-artifact
+integrity verification. An optional `SESSION_SEARCH_CORPUS_TOKEN` can pin an
+expected observed generation for a controlled deployment.
+
+For deliberate diagnostics:
+
+```bash
+/workspace/tools/session-search/status.sh --json
+/workspace/tools/session-search/status.sh --refresh --json
+```
+
+Default `READY` means LOCAL route coherence only. It does not mean GitHub was
+consulted and does not mean the corpus passed full verification. `--refresh` is
+the bounded remote-currentness path. `acceptance.sh` remains the heavier
+integrity/rebuild path.
+
+For a deliberate legacy/scratch projection, bypass the wrapper and use the
+module directly with `--db PATH`; that path is outside the normal runtime
+freshness contract.
+
+### Runtime helper projection
+
+The tracked helper source lives in `marcopolo-cookbook/session-search/`. Project
+it into `/workspace/tools/session-search` with:
+
+```bash
+/workspace/marcopolo-cookbook/session-search/materialize-runtime.sh
+```
+
+The materializer replaces only tracked helper files and deliberately preserves
+the local/private `runtime.env`. Runtime helpers compare themselves with the
+local canonical cookbook source during normal preflight, so partial or stale
+materialization fails closed.
 
 ## Reference discovery
 
