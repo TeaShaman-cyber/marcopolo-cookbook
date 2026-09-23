@@ -252,6 +252,48 @@ class SessionSearchStatusTests(unittest.TestCase):
             self.assertEqual(payload["runtime_projection"]["state"], "STALE")
             self.assertIn("runtime_projection", payload["blockers"])
 
+    def test_untracked_implementation_is_dirty_even_when_git_config_hides_untracked(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            runtime = self.make_runtime(root)
+            impl = root / "impl"
+            impl.mkdir()
+            (impl / "README.md").write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "init", "-q", "-b", "main", str(impl)], check=True)
+            subprocess.run(["git", "-C", str(impl), "add", "README.md"], check=True)
+            env = os.environ.copy()
+            env.update(
+                {
+                    "GIT_AUTHOR_NAME": "test",
+                    "GIT_AUTHOR_EMAIL": "test@example.invalid",
+                    "GIT_COMMITTER_NAME": "test",
+                    "GIT_COMMITTER_EMAIL": "test@example.invalid",
+                }
+            )
+            subprocess.run(
+                ["git", "-C", str(impl), "commit", "-q", "-m", "fixture"],
+                check=True,
+                env=env,
+            )
+            subprocess.run(
+                ["git", "-C", str(impl), "config", "status.showUntrackedFiles", "no"],
+                check=True,
+            )
+            (impl / "session_search").mkdir()
+            (impl / "session_search" / "search.py").write_text(
+                "# untracked\n", encoding="utf-8"
+            )
+            corpus = self.make_corpus(root)
+            proc, payload = self.run_status(runtime, impl, corpus)
+            self.assertEqual(proc.returncode, 69)
+            self.assertEqual(payload["implementation"]["state"], "DIRTY")
+            self.assertEqual(
+                payload["implementation"]["reason"], "session_search_tree_dirty"
+            )
+            self.assertIn("implementation", payload["blockers"])
+
     def test_git_status_failure_is_unknown_not_clean(self):
         with tempfile.TemporaryDirectory() as td:
             root = pathlib.Path(td)
