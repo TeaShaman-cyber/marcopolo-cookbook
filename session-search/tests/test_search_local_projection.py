@@ -72,6 +72,7 @@ class SearchLocalProjectionIntegrationTests(unittest.TestCase):
     def base_env(self, cache_root: pathlib.Path) -> dict[str, str]:
         env = os.environ.copy()
         env["SESSION_SEARCH_CANONICAL_DIR"] = str(ROOT)
+        env["SESSION_SEARCH_CANONICAL_REF"] = ""
         env["SESSION_SEARCH_LOCAL_CACHE_ROOT"] = str(cache_root)
         return env
 
