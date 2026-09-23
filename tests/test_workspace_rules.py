@@ -7,6 +7,19 @@ RULES = ROOT / "rules" / "workspace.RULES.md"
 
 
 class WorkspaceRulesTest(unittest.TestCase):
+    def test_session_search_route_distinguishes_local_remote_and_integrity_checks(self):
+        text = RULES.read_text(encoding="utf-8")
+
+        self.assertIn("/workspace/tools/session-search/search.sh", text)
+        self.assertIn("local freshness", text)
+        self.assertIn("/workspace/tools/session-search/status.sh --json", text)
+        self.assertIn("repository-currentness route", text)
+        self.assertIn("local route coherence", text)
+        self.assertIn("tree is Git-clean", text)
+        self.assertNotIn("locally usable/clean", text)
+        self.assertIn("/workspace/tools/session-search/acceptance.sh", text)
+        self.assertIn("Do not put full acceptance/rebuild", text)
+
     def test_existing_worktree_provenance_is_not_assumed_to_be_user_work(self):
         text = RULES.read_text(encoding="utf-8")
 

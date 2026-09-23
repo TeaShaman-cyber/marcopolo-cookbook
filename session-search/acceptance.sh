@@ -1,8 +1,9 @@
 #!/usr/bin/env sh
 set -eu
 
-ROOT=/workspace/theseus-session-search-lab
-RUNTIME_ENV=/workspace/tools/session-search/runtime.env
+TOOL_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+RUNTIME_ENV=${SESSION_SEARCH_RUNTIME_ENV:-$TOOL_DIR/runtime.env}
+. "$TOOL_DIR/runtime-bindings.sh"
 MODE=READ_ONLY_DEFAULT
 INGEST_PATH=
 QUERY=session
@@ -48,9 +49,9 @@ while [ "$#" -gt 0 ]; do
 	esac
 done
 
-if [ -z "${SESSION_SEARCH_CORPUS:-}" ] && [ -r "$RUNTIME_ENV" ]; then
-	. "$RUNTIME_ENV"
-fi
+session_search_load_runtime "$RUNTIME_ENV"
+"$TOOL_DIR/status.sh" --check-search || exit $?
+ROOT=${SESSION_SEARCH_IMPLEMENTATION_ROOT:-/workspace/theseus-session-search-lab}
 CORPUS=${SESSION_SEARCH_CORPUS:-}
 if [ -z "$CORPUS" ]; then
 	echo 'SESSION_SEARCH BLOCKED: CORPUS_LOCATION_UNRESOLVED' >&2

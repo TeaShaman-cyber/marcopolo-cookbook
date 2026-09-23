@@ -1,14 +1,16 @@
-#!/usr/bin/env sh
+#!/bin/sh
 set -eu
 
-ROOT=/workspace/theseus-session-search-lab
-RUNTIME_ENV=/workspace/tools/session-search/runtime.env
+TOOL_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+RUNTIME_ENV=${SESSION_SEARCH_RUNTIME_ENV:-$TOOL_DIR/runtime.env}
 
-if [ -z "${SESSION_SEARCH_CORPUS:-}" ] && [ -r "$RUNTIME_ENV" ]; then
-	# Local control-plane binding only; corpus artifacts remain authority.
-	. "$RUNTIME_ENV"
-fi
+# Local control-plane binding only; corpus artifacts remain authority.
+. "$TOOL_DIR/runtime-bindings.sh"
+session_search_load_runtime "$RUNTIME_ENV"
 
+"$TOOL_DIR/status.sh" --check-search || exit $?
+
+ROOT=${SESSION_SEARCH_IMPLEMENTATION_ROOT:-/workspace/theseus-session-search-lab}
 CORPUS=${SESSION_SEARCH_CORPUS:-}
 if [ -z "$CORPUS" ]; then
 	echo "SESSION_SEARCH BLOCKED: CORPUS_LOCATION_UNRESOLVED; set SESSION_SEARCH_CORPUS or configure $RUNTIME_ENV" >&2
