@@ -76,7 +76,9 @@ def _implementation(root: pathlib.Path) -> dict[str, Any]:
     if head is None:
         return {"state": "UNKNOWN", "root": str(root), "reason": "git_head_unavailable"}
 
-    status_proc = _run_git_result(root, "status", "--porcelain", "--", "session_search")
+    status_proc = _run_git_result(
+        root, "status", "--porcelain", "--untracked-files=all", "--", "session_search"
+    )
     if status_proc.returncode != 0:
         return {
             "state": "UNKNOWN",
