@@ -9,7 +9,9 @@ cleanup item, or upstream dependency issue is complete.
 
 ## [Unreleased]
 
-No committed release-scope changes yet.
+### Added
+
+- Read-only MarcoPolo Project roadmap exporter/verifier with stable entity identity, independent `ProjectV2.items` and Issue/PR `projectItems` witnesses, machine-readable `PASS / DRIFT / UNAVAILABLE` receipts, and deterministic lifecycle-drift fixtures.
 
 ## [0.1.0] - 2026-09-23
 

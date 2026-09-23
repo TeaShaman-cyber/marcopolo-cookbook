@@ -21,6 +21,9 @@ class LifecyclePolicyContractTest(unittest.TestCase):
             "target-side migration receipt",
             "exact remote readback",
             "release / publication when applicable",
+            "tools/project-roadmap/check",
+            "ProjectV2.items",
+            "projectItems",
         ):
             self.assertIn(marker, text)
 

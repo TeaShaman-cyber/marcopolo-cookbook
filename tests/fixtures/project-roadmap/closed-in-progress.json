@@ -1,0 +1,302 @@
+{
+  "entities": [
+    {
+      "disposition": null,
+      "entity_type": "ISSUE",
+      "merged_at": null,
+      "migration_receipt_url": null,
+      "number": 48,
+      "owner_issue": null,
+      "parent_issue": null,
+      "project_memberships": [
+        {
+          "fields": {
+            "Area": "Program",
+            "Maturity": "Active",
+            "Priority": "P0",
+            "Status": "In Progress"
+          },
+          "is_archived": false,
+          "item_id": "PVTI_48"
+        }
+      ],
+      "repository": "TeaShaman-cyber/marcopolo-cookbook",
+      "state": "OPEN",
+      "state_reason": null,
+      "title": "Issue 48",
+      "url": "https://github.com/TeaShaman-cyber/marcopolo-cookbook/issues/48"
+    },
+    {
+      "disposition": null,
+      "entity_type": "ISSUE",
+      "merged_at": null,
+      "migration_receipt_url": null,
+      "number": 49,
+      "owner_issue": null,
+      "parent_issue": 48,
+      "project_memberships": [
+        {
+          "fields": {
+            "Area": "Lifecycle",
+            "Maturity": "Proposed",
+            "Priority": "P1",
+            "Status": "In Progress"
+          },
+          "is_archived": false,
+          "item_id": "PVTI_49"
+        }
+      ],
+      "repository": "TeaShaman-cyber/marcopolo-cookbook",
+      "state": "CLOSED",
+      "state_reason": "COMPLETED",
+      "title": "Issue 49",
+      "url": "https://github.com/TeaShaman-cyber/marcopolo-cookbook/issues/49"
+    },
+    {
+      "disposition": null,
+      "entity_type": "ISSUE",
+      "merged_at": null,
+      "migration_receipt_url": null,
+      "number": 50,
+      "owner_issue": null,
+      "parent_issue": 48,
+      "project_memberships": [
+        {
+          "fields": {
+            "Area": "Lifecycle",
+            "Maturity": "Proposed",
+            "Priority": "P1",
+            "Status": "Todo"
+          },
+          "is_archived": false,
+          "item_id": "PVTI_50"
+        }
+      ],
+      "repository": "TeaShaman-cyber/marcopolo-cookbook",
+      "state": "OPEN",
+      "state_reason": null,
+      "title": "Issue 50",
+      "url": "https://github.com/TeaShaman-cyber/marcopolo-cookbook/issues/50"
+    },
+    {
+      "disposition": null,
+      "entity_type": "ISSUE",
+      "merged_at": null,
+      "migration_receipt_url": null,
+      "number": 51,
+      "owner_issue": null,
+      "parent_issue": 48,
+      "project_memberships": [
+        {
+          "fields": {
+            "Area": "Lifecycle",
+            "Maturity": "Proposed",
+            "Priority": "P1",
+            "Status": "Todo"
+          },
+          "is_archived": false,
+          "item_id": "PVTI_51"
+        }
+      ],
+      "repository": "TeaShaman-cyber/marcopolo-cookbook",
+      "state": "OPEN",
+      "state_reason": null,
+      "title": "Issue 51",
+      "url": "https://github.com/TeaShaman-cyber/marcopolo-cookbook/issues/51"
+    },
+    {
+      "disposition": null,
+      "entity_type": "ISSUE",
+      "merged_at": null,
+      "migration_receipt_url": null,
+      "number": 54,
+      "owner_issue": null,
+      "parent_issue": 48,
+      "project_memberships": [
+        {
+          "fields": {
+            "Area": "QA",
+            "Maturity": "Proposed",
+            "Priority": "P1",
+            "Status": "Todo"
+          },
+          "is_archived": false,
+          "item_id": "PVTI_54"
+        }
+      ],
+      "repository": "TeaShaman-cyber/marcopolo-cookbook",
+      "state": "OPEN",
+      "state_reason": null,
+      "title": "Issue 54",
+      "url": "https://github.com/TeaShaman-cyber/marcopolo-cookbook/issues/54"
+    },
+    {
+      "disposition": null,
+      "entity_type": "ISSUE",
+      "merged_at": null,
+      "migration_receipt_url": null,
+      "number": 52,
+      "owner_issue": null,
+      "parent_issue": 48,
+      "project_memberships": [
+        {
+          "fields": {
+            "Area": "QA",
+            "Maturity": "Verified",
+            "Priority": "P0",
+            "Status": "Done"
+          },
+          "is_archived": false,
+          "item_id": "PVTI_52"
+        }
+      ],
+      "repository": "TeaShaman-cyber/marcopolo-cookbook",
+      "state": "CLOSED",
+      "state_reason": "COMPLETED",
+      "title": "Issue 52",
+      "url": "https://github.com/TeaShaman-cyber/marcopolo-cookbook/issues/52"
+    },
+    {
+      "disposition": null,
+      "entity_type": "ISSUE",
+      "merged_at": null,
+      "migration_receipt_url": null,
+      "number": 53,
+      "owner_issue": null,
+      "parent_issue": 48,
+      "project_memberships": [
+        {
+          "fields": {
+            "Area": "Lifecycle",
+            "Maturity": "Verified",
+            "Priority": "P0",
+            "Status": "Done"
+          },
+          "is_archived": false,
+          "item_id": "PVTI_53"
+        }
+      ],
+      "repository": "TeaShaman-cyber/marcopolo-cookbook",
+      "state": "CLOSED",
+      "state_reason": "COMPLETED",
+      "title": "Issue 53",
+      "url": "https://github.com/TeaShaman-cyber/marcopolo-cookbook/issues/53"
+    }
+  ],
+  "observed_at_utc": "2026-09-23T00:00:00+00:00",
+  "project": {
+    "id": "PVT_test",
+    "items": [
+      {
+        "entity_type": "ISSUE",
+        "fields": {
+          "Area": "Program",
+          "Maturity": "Active",
+          "Priority": "P0",
+          "Status": "In Progress"
+        },
+        "is_archived": false,
+        "item_id": "PVTI_48",
+        "number": 48,
+        "repository": "TeaShaman-cyber/marcopolo-cookbook",
+        "title": "Issue 48",
+        "url": "https://github.com/TeaShaman-cyber/marcopolo-cookbook/issues/48"
+      },
+      {
+        "entity_type": "ISSUE",
+        "fields": {
+          "Area": "Lifecycle",
+          "Maturity": "Proposed",
+          "Priority": "P1",
+          "Status": "In Progress"
+        },
+        "is_archived": false,
+        "item_id": "PVTI_49",
+        "number": 49,
+        "repository": "TeaShaman-cyber/marcopolo-cookbook",
+        "title": "Issue 49",
+        "url": "https://github.com/TeaShaman-cyber/marcopolo-cookbook/issues/49"
+      },
+      {
+        "entity_type": "ISSUE",
+        "fields": {
+          "Area": "Lifecycle",
+          "Maturity": "Proposed",
+          "Priority": "P1",
+          "Status": "Todo"
+        },
+        "is_archived": false,
+        "item_id": "PVTI_50",
+        "number": 50,
+        "repository": "TeaShaman-cyber/marcopolo-cookbook",
+        "title": "Issue 50",
+        "url": "https://github.com/TeaShaman-cyber/marcopolo-cookbook/issues/50"
+      },
+      {
+        "entity_type": "ISSUE",
+        "fields": {
+          "Area": "Lifecycle",
+          "Maturity": "Proposed",
+          "Priority": "P1",
+          "Status": "Todo"
+        },
+        "is_archived": false,
+        "item_id": "PVTI_51",
+        "number": 51,
+        "repository": "TeaShaman-cyber/marcopolo-cookbook",
+        "title": "Issue 51",
+        "url": "https://github.com/TeaShaman-cyber/marcopolo-cookbook/issues/51"
+      },
+      {
+        "entity_type": "ISSUE",
+        "fields": {
+          "Area": "QA",
+          "Maturity": "Proposed",
+          "Priority": "P1",
+          "Status": "Todo"
+        },
+        "is_archived": false,
+        "item_id": "PVTI_54",
+        "number": 54,
+        "repository": "TeaShaman-cyber/marcopolo-cookbook",
+        "title": "Issue 54",
+        "url": "https://github.com/TeaShaman-cyber/marcopolo-cookbook/issues/54"
+      },
+      {
+        "entity_type": "ISSUE",
+        "fields": {
+          "Area": "QA",
+          "Maturity": "Verified",
+          "Priority": "P0",
+          "Status": "Done"
+        },
+        "is_archived": false,
+        "item_id": "PVTI_52",
+        "number": 52,
+        "repository": "TeaShaman-cyber/marcopolo-cookbook",
+        "title": "Issue 52",
+        "url": "https://github.com/TeaShaman-cyber/marcopolo-cookbook/issues/52"
+      },
+      {
+        "entity_type": "ISSUE",
+        "fields": {
+          "Area": "Lifecycle",
+          "Maturity": "Verified",
+          "Priority": "P0",
+          "Status": "Done"
+        },
+        "is_archived": false,
+        "item_id": "PVTI_53",
+        "number": 53,
+        "repository": "TeaShaman-cyber/marcopolo-cookbook",
+        "title": "Issue 53",
+        "url": "https://github.com/TeaShaman-cyber/marcopolo-cookbook/issues/53"
+      }
+    ],
+    "number": 8,
+    "reported_total_count": 7,
+    "title": "Theseus \u2014 MarcoPolo Operations"
+  },
+  "repository": "TeaShaman-cyber/marcopolo-cookbook",
+  "schema": "theseus.marcopolo-roadmap-snapshot.v1"
+}

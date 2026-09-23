@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "repository": "TeaShaman-cyber/marcopolo-cookbook",
+  "project": {
+    "owner": "TeaShaman-cyber",
+    "owner_type": "USER",
+    "number": 8,
+    "title": "Theseus — MarcoPolo Operations"
+  },
+  "cleanup_parent": 48,
+  "cleanup_children": [49, 50, 51, 52, 53, 54],
+  "pr_owner_exceptions": []
+}

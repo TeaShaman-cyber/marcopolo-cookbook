@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+GH_BIN=${GH_BIN:-/workspace/.local/bin/gh}
+[ -x "$GH_BIN" ] || GH_BIN=/usr/local/bin/gh
+export GH_BIN
+
+if [ -z "${GH_CONFIG_DIR:-}" ] && [ -r /workspace/.config/gh-write/hosts.yml ]; then
+	GH_CONFIG_DIR=/workspace/.config/gh-write
+	export GH_CONFIG_DIR
+fi
+
+exec python3 "$ROOT/tools/project-roadmap/roadmap.py" check "$@"
