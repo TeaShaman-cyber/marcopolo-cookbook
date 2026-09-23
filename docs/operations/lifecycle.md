@@ -135,3 +135,15 @@ permission, or consequential promotion.
 A roadmap verifier may report PASS / DRIFT / UNAVAILABLE, but remains read-only.
 Its result can identify lifecycle drift; it cannot authorize closing issues,
 moving work, merging PRs, or publishing releases.
+
+For the MarcoPolo roadmap, the reproducible live route is:
+
+```bash
+tools/project-roadmap/check \
+  --snapshot-output /tmp/marcopolo-roadmap.json \
+  --receipt /tmp/marcopolo-roadmap-receipt.json
+```
+
+The verifier compares the Project-centric `ProjectV2.items` connection with
+reverse Issue/PR `projectItems` membership. A disagreement is `DRIFT`, not a
+reason to silently prefer whichever read surface looks newer.
