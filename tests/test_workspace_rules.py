@@ -13,7 +13,7 @@ class WorkspaceRulesTest(unittest.TestCase):
         self.assertIn("/workspace/tools/session-search/search.sh", text)
         self.assertIn("local freshness", text)
         self.assertIn("/workspace/tools/session-search/status.sh --json", text)
-        self.assertIn("status.sh --refresh --json", text)
+        self.assertIn("repository-currentness route", text)
         self.assertIn("local route coherence", text)
         self.assertIn("/workspace/tools/session-search/acceptance.sh", text)
         self.assertIn("Do not put full acceptance/rebuild", text)

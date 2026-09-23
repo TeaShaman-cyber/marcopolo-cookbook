@@ -94,7 +94,9 @@ class SessionSearchStatusTests(unittest.TestCase):
             self.assertEqual(payload["implementation"]["state"], "BOUND")
             self.assertEqual(payload["corpus"]["state"], "BOUND")
             self.assertEqual(payload["corpus"]["integrity"], "NOT_CHECKED")
-            self.assertEqual(payload["remote_currentness"], "NOT_CHECKED")
+            self.assertEqual(
+                payload["implementation"]["remote_currentness"], "NOT_CHECKED"
+            )
 
     def test_stale_runtime_projection_blocks_search_safety(self):
         with tempfile.TemporaryDirectory() as td:
@@ -149,7 +151,8 @@ class SessionSearchStatusTests(unittest.TestCase):
             second_proc, second = self.run_status(runtime, impl, corpus)
             self.assertEqual(second_proc.returncode, 0)
             self.assertNotEqual(
-                first["corpus"]["observed_token"], second["corpus"]["observed_token"]
+                first["corpus"]["observed_generation"],
+                second["corpus"]["observed_generation"],
             )
             self.assertEqual(second["corpus"]["accepted_count"], 2)
 

@@ -29,11 +29,11 @@ SESSION_SEARCH_IMPLEMENTATION_REF=origin/main
 # Missing bindings are loaded from runtime.env; already exported values win.
 ```
 
-`SESSION_SEARCH_IMPLEMENTATION_HEAD` makes the default local preflight require
-an exact checked-out commit. `SESSION_SEARCH_IMPLEMENTATION_REF` makes the
-default preflight compare HEAD with the locally known ref; `status.sh --refresh`
-first refreshes that configured ref and then compares again. Without an
-authoritative implementation ref, remote currentness is `UNKNOWN`, not inferred.
+`SESSION_SEARCH_IMPLEMENTATION_HEAD` makes the local preflight require an exact
+checked-out commit. `SESSION_SEARCH_IMPLEMENTATION_REF` makes it compare HEAD
+with the locally known ref. Neither operation performs a network refresh. When
+remote freshness matters, use the workspace repository-currentness procedure
+(`git fetch` plus `git-worktree-currentness.sh`) against the authoritative ref.
 
 The wrapper is **corpus-first**. It never scans `/workspace` to guess where
 private evidence lives. Corpus location resolves explicitly in this order:
@@ -43,22 +43,20 @@ private evidence lives. Corpus location resolves explicitly in this order:
 3. deterministic `CORPUS_LOCATION_UNRESOLVED` failure.
 
 The cheap status path observes the accepted-artifact filename set plus SQLite
-projection metadata and emits a deterministic change token. This token is for
-freshness/cache invalidation; it is **not** a replacement for accepted-artifact
-integrity verification. An optional `SESSION_SEARCH_CORPUS_TOKEN` can pin an
-expected observed generation for a controlled deployment.
+projection metadata and emits a deterministic observed-generation token. This
+token is a change detector; it is **not** a replacement for accepted-artifact
+integrity verification.
 
-For deliberate diagnostics:
+For deliberate local diagnostics:
 
 ```bash
 /workspace/tools/session-search/status.sh --json
-/workspace/tools/session-search/status.sh --refresh --json
 ```
 
-Default `READY` means LOCAL route coherence only. It does not mean GitHub was
-consulted and does not mean the corpus passed full verification. `--refresh` is
-the bounded remote-currentness path. `acceptance.sh` remains the heavier
-integrity/rebuild path.
+`READY` means LOCAL route coherence only. It does not mean GitHub was consulted
+and does not mean the corpus passed full verification. Remote currentness uses
+the existing workspace repository-currentness route; `acceptance.sh` remains
+the heavier integrity/rebuild path.
 
 For a deliberate legacy/scratch projection, bypass the wrapper and use the
 module directly with `--db PATH`; that path is outside the normal runtime

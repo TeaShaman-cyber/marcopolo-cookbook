@@ -12,14 +12,6 @@ session_search_load_runtime() {
 	_ss_impl_head=${SESSION_SEARCH_IMPLEMENTATION_HEAD-}
 	_ss_impl_ref_set=${SESSION_SEARCH_IMPLEMENTATION_REF+x}
 	_ss_impl_ref=${SESSION_SEARCH_IMPLEMENTATION_REF-}
-	_ss_corpus_token_set=${SESSION_SEARCH_CORPUS_TOKEN+x}
-	_ss_corpus_token=${SESSION_SEARCH_CORPUS_TOKEN-}
-	_ss_local_projection_set=${SESSION_SEARCH_LOCAL_PROJECTION+x}
-	_ss_local_projection=${SESSION_SEARCH_LOCAL_PROJECTION-}
-	_ss_canonical_dir_set=${SESSION_SEARCH_CANONICAL_DIR+x}
-	_ss_canonical_dir=${SESSION_SEARCH_CANONICAL_DIR-}
-	_ss_canonical_ref_set=${SESSION_SEARCH_CANONICAL_REF+x}
-	_ss_canonical_ref=${SESSION_SEARCH_CANONICAL_REF-}
 
 	set -a
 	. "$runtime_env"
@@ -41,25 +33,7 @@ session_search_load_runtime() {
 		SESSION_SEARCH_IMPLEMENTATION_REF=$_ss_impl_ref
 		export SESSION_SEARCH_IMPLEMENTATION_REF
 	fi
-	if [ "$_ss_corpus_token_set" = x ]; then
-		SESSION_SEARCH_CORPUS_TOKEN=$_ss_corpus_token
-		export SESSION_SEARCH_CORPUS_TOKEN
-	fi
-	if [ "$_ss_local_projection_set" = x ]; then
-		SESSION_SEARCH_LOCAL_PROJECTION=$_ss_local_projection
-		export SESSION_SEARCH_LOCAL_PROJECTION
-	fi
-	if [ "$_ss_canonical_dir_set" = x ]; then
-		SESSION_SEARCH_CANONICAL_DIR=$_ss_canonical_dir
-		export SESSION_SEARCH_CANONICAL_DIR
-	fi
-	if [ "$_ss_canonical_ref_set" = x ]; then
-		SESSION_SEARCH_CANONICAL_REF=$_ss_canonical_ref
-		export SESSION_SEARCH_CANONICAL_REF
-	fi
 
 	unset _ss_corpus_set _ss_corpus _ss_impl_root_set _ss_impl_root
 	unset _ss_impl_head_set _ss_impl_head _ss_impl_ref_set _ss_impl_ref
-	unset _ss_corpus_token_set _ss_corpus_token _ss_local_projection_set _ss_local_projection
-	unset _ss_canonical_dir_set _ss_canonical_dir _ss_canonical_ref_set _ss_canonical_ref
 }

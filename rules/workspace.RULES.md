@@ -29,25 +29,19 @@ configured local HEAD/ref pin, and the explicitly bound corpus is available
 with an observable generation token. It performs no network access and no full
 corpus integrity/rebuild verification.
 
-For explicit diagnostics, use:
+For explicit local diagnostics, use:
 
 ```bash
 /workspace/tools/session-search/status.sh --json
 ```
 
-When the task depends on whether the cookbook or Session Search implementation
-is current against its configured remote ref, use the stronger bounded check:
-
-```bash
-/workspace/tools/session-search/status.sh --refresh --json
-```
-
-`READY` from the default status means **local route coherence**, not remote
-freshness and not full corpus integrity. `--refresh` may still return `UNKNOWN`
-when no authoritative implementation ref is configured. If status reports
-`STALE`, `BLOCKED`, or `UNKNOWN` for a property required by the task, do not
-silently treat remembered state, an arbitrary checkout, or filesystem discovery
-as equivalent evidence.
+`READY` means **local route coherence**, not remote freshness and not full
+corpus integrity. When remote freshness of the bound implementation matters, use
+the existing repository-currentness route described below rather than teaching
+Session Search a second currentness mechanism. If status reports `STALE`,
+`BLOCKED`, or `UNKNOWN` for a property required by the task, do not silently
+treat remembered state, an arbitrary checkout, or filesystem discovery as
+equivalent evidence.
 
 Use the heavy acceptance path only when corpus integrity, import health, or
 rebuild equivalence is actually in question:
