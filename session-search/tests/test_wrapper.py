@@ -13,6 +13,8 @@ class SessionSearchWrapperContractTests(unittest.TestCase):
         self.assertIn("runtime.env", text)
         self.assertIn("--corpus", text)
         self.assertIn("status.sh", text)
+        self.assertIn("local-projection.sh", text)
+        self.assertIn("SEARCH_CORPUS", text)
         self.assertIn("SESSION_SEARCH_IMPLEMENTATION_ROOT", text)
         self.assertNotIn("session-search-full.sqlite3", text)
         self.assertNotIn(" --db ", text)

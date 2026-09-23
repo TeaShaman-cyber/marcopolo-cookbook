@@ -14,6 +14,8 @@ session_search_load_runtime() {
 	_ss_impl_ref=${SESSION_SEARCH_IMPLEMENTATION_REF-}
 	_ss_canonical_dir_set=${SESSION_SEARCH_CANONICAL_DIR+x}
 	_ss_canonical_dir=${SESSION_SEARCH_CANONICAL_DIR-}
+	_ss_cache_root_set=${SESSION_SEARCH_LOCAL_CACHE_ROOT+x}
+	_ss_cache_root=${SESSION_SEARCH_LOCAL_CACHE_ROOT-}
 
 	set -a
 	. "$runtime_env"
@@ -39,8 +41,12 @@ session_search_load_runtime() {
 		SESSION_SEARCH_CANONICAL_DIR=$_ss_canonical_dir
 		export SESSION_SEARCH_CANONICAL_DIR
 	fi
+	if [ "$_ss_cache_root_set" = x ]; then
+		SESSION_SEARCH_LOCAL_CACHE_ROOT=$_ss_cache_root
+		export SESSION_SEARCH_LOCAL_CACHE_ROOT
+	fi
 
 	unset _ss_corpus_set _ss_corpus _ss_impl_root_set _ss_impl_root
 	unset _ss_impl_head_set _ss_impl_head _ss_impl_ref_set _ss_impl_ref
-	unset _ss_canonical_dir_set _ss_canonical_dir
+	unset _ss_canonical_dir_set _ss_canonical_dir _ss_cache_root_set _ss_cache_root
 }

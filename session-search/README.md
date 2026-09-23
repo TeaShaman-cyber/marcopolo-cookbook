@@ -11,9 +11,12 @@ Session history is evidence, not semantic memory. The accepted artifacts are dur
 ```
 
 This remains the one-command interactive route. `search.sh` first runs a cheap
-local freshness preflight and then invokes the bound Session Search
-implementation against the explicitly selected cumulative corpus. Normal search
-does **not** perform network access, full corpus verification, or rebuild.
+local freshness preflight, then prefers a freshness-bound disposable local read
+projection, and finally invokes the bound Session Search implementation. If the
+local projection cannot be safely refreshed or validated, the wrapper emits a
+`DEGRADED` notice on stderr and falls back to the explicitly bound durable corpus.
+Normal search does **not** perform network access, full corpus verification, or
+rebuild.
 
 The runtime binding is loaded from `/workspace/tools/session-search/runtime.env`.
 Already exported values take precedence; `runtime.env` fills only missing known
@@ -26,6 +29,8 @@ SESSION_SEARCH_IMPLEMENTATION_ROOT=/workspace/path/to/clean/session-search-check
 # Optional exact/local pins:
 SESSION_SEARCH_IMPLEMENTATION_HEAD=<full-git-oid>
 SESSION_SEARCH_IMPLEMENTATION_REF=origin/main
+# Optional local ephemeral-cache root (default: /tmp/session-search-local-projection):
+SESSION_SEARCH_LOCAL_CACHE_ROOT=/tmp/session-search-local-projection
 # Missing bindings are loaded from runtime.env; already exported values win.
 ```
 
@@ -46,6 +51,27 @@ The cheap status path observes the accepted-artifact filename set plus SQLite
 projection metadata and emits a deterministic observed-generation token. This
 token is a change detector; it is **not** a replacement for accepted-artifact
 integrity verification.
+
+
+### Local interactive projection
+
+The durable corpus remains authority. For interactive latency only, normal
+`search.sh` maintains a disposable read-only SQLite projection under local `/tmp`
+storage (or `SESSION_SEARCH_LOCAL_CACHE_ROOT` when explicitly configured). The
+cache is keyed to the bound corpus and is usable only when its recorded source
+generation matches the currently observed accepted-artifact set and source DB
+identity.
+
+Refresh uses SQLite's backup API rather than a raw file copy. A candidate is
+published only after the durable generation is stable across the snapshot, the
+candidate `artifacts.sha256` set exactly matches the accepted ledger, and
+`PRAGMA quick_check` returns `ok`. Concurrent refreshers serialize on a local
+lock. Publication uses atomic replacement and the final cached DB is read-only.
+
+A cache failure never widens authority and never silently serves stale bytes.
+The wrapper falls back to the durable corpus and reports the degraded route on
+stderr. `acceptance.sh` always verifies the durable corpus; it does not use the
+interactive cache.
 
 For deliberate local diagnostics:
 
@@ -85,7 +111,9 @@ Do not start troubleshooting by recursively traversing `/workspace` or network-b
 /workspace/tools/search/search.sh 'literal text' path/to/bounded/root
 ```
 
-The Session Search wrapper performs no network access and no persistence writes.
+The Session Search wrapper performs no network access and no durable-corpus
+writes. Normal search may maintain the disposable local `/tmp` read projection
+described above.
 
 ## Operational acceptance
 

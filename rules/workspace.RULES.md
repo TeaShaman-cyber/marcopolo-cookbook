@@ -26,8 +26,11 @@ preflight** before invoking Session Search. That preflight establishes only that
 the runtime helper projection matches the local cookbook source, the bound
 Session Search implementation is present, its `session_search` tree is Git-clean,
 any configured local HEAD/ref pin matches, and the explicitly bound corpus is
-available with an observable generation token. It performs no network access and no full
-corpus integrity/rebuild verification.
+available with an observable generation token. After that preflight, normal search
+may use a freshness-bound disposable local read projection for performance. That
+cache is never authority: if refresh/validation fails, search reports a degraded
+route on stderr and falls back to the explicitly bound durable corpus. It performs
+no network access and no full corpus integrity/rebuild verification.
 
 For explicit local diagnostics, use:
 
@@ -43,8 +46,9 @@ Session Search a second currentness mechanism. If status reports `STALE`,
 treat remembered state, an arbitrary checkout, or filesystem discovery as
 equivalent evidence.
 
-Use the heavy acceptance path only when corpus integrity, import health, or
-rebuild equivalence is actually in question:
+Use the heavy acceptance path only when durable-corpus integrity, import health,
+or rebuild equivalence is actually in question. Acceptance does not use the
+interactive local cache:
 
 ```bash
 /workspace/tools/session-search/acceptance.sh
