@@ -27,7 +27,6 @@ A path, dependency, or artifact observed in one runtime is not assumed to exist 
 - [Project IaC](project/README.md) — Git-versioned source for cross-chat project routing, authority, and change-control policy.
 - [Roadmap verifier](tools/project-roadmap/README.md) — read-only Project graph export/check with independent project-listing and Issue/PR reverse-membership witnesses.
 - [mcporter workbench](mcporter/README.md) — bounded MCP client setup, inventory, probes, and acceptance checks.
-- [MCPJam CLI workbench](mcpjam-cli/README.md) — independent MCP transport/protocol diagnostics, probes, and Agent Skills inspection.
 - [Search helpers](search/README.md) — lightweight search tooling used in the workspace.
 - [Lightweight development gate](tools/dev/README.md) — pinned standalone editor/linters with NFS-light caches and changed-file deterministic local QA.
 - [Verification ladder](docs/operations/verification-ladder.md) — L0 MarcoPolo fast feedback, L1 hosted CI, L2 Codespace heavy debugging, and the learning loop that promotes recurring findings into executable checks.

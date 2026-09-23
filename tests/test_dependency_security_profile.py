@@ -48,7 +48,6 @@ class DependencySecurityProfileContractTest(unittest.TestCase):
             rows,
             [
                 "osv-lockfile mcporter/package-lock.json",
-                "osv-lockfile mcpjam-cli/package-lock.json",
                 "pip-requirements marcopolo/requirements-python.txt",
                 "pip-hashed requirements/ci-workflow-security.txt",
             ],
