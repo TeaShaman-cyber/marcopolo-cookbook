@@ -1,0 +1,23 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "marcopolo-core-router",
+  "version": "0.1.0",
+  "description": "Thin operational guardrails for MarcoPolo and GitHub routing, currentness, 403 boundaries, and verified completion.",
+  "author": {
+    "name": "TeaShaman-cyber"
+  },
+  "repository": "https://github.com/TeaShaman-cyber/marcopolo-cookbook",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "MarcoPolo Core Router",
+        "shortDescription": "MarcoPolo routing guardrails",
+        "longDescription": "Loads a small set of recurring MarcoPolo and GitHub operational guardrails without copying the full cookbook into context.",
+        "developerName": "TeaShaman-cyber",
+        "category": "Productivity",
+        "capabilities": [],
+        "defaultPrompt": "Help route this MarcoPolo or GitHub operation safely and verify the result."
+      }
+    }
+  }
+}
