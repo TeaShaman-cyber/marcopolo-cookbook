@@ -41,6 +41,19 @@ Choose the route by required capability and authority:
 
 Do not infer write authority from a successful read.
 
+## GitHub Projects coordination
+
+Treat GitHub Projects as a coordination projection, not authority or permission.
+
+- when durable project-owned work has a dedicated Project, keep the coordinating Issue in the narrowest owning repository/lab Project;
+- synchronize Project lifecycle fields from verified Issue/PR disposition, never the reverse;
+- do not require every implementation PR as a separate Project item when the coordinating Issue already carries the work;
+- probe Projects as a separate capability surface; ordinary repository access does not prove Projects access;
+- if a Projects-specific connector is unauthorized while ordinary GitHub access works, keep those authority surfaces separate rather than replacing or reusing credentials blindly;
+- if Projects is unavailable, continue authorized canonical repository work and report Project synchronization DEGRADED rather than blocking unrelated repo work;
+- when the project-centric item list may be stale, verify membership through reverse issue/PR projectItems or the repository verifier before attempting repair;
+- authorized Project mutations require Project readback.
+
 ## 403 rule
 
 A 403 is a routing signal, not a diagnosis.
