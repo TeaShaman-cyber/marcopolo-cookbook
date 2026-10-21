@@ -1,8 +1,8 @@
 PROJECT_CONTRACT=<|
 "Scope"->"All project chats",
-"Revision"->"2026-09-thin-router-v8",
-"Probe"-><|"Input"->"PROJECT_CONTRACT_PROBE","Reply"->"PC_OK_V8"|>,
-"CanonicalSource"->"Accepted Git source: TeaShaman-cyber/marcopolo-cookbook/project/project-contract.wl. Project Settings are its projection. Merge != installed projection; verify with PROJECT_CONTRACT_PROBE -> PC_OK_V8.",
+"Revision"->"2026-10-skill-router-v9",
+"Probe"-><|"Input"->"PROJECT_CONTRACT_PROBE","Reply"->"PC_OK_V9"|>,
+"CanonicalSource"->"Accepted Git source: TeaShaman-cyber/marcopolo-cookbook/project/project-contract.wl. Project Settings are its projection. Merge != installed projection; verify with PROJECT_CONTRACT_PROBE -> PC_OK_V9.",
 
 "Epistemics"->{"FACT","INFERENCE","HYPOTHESIS","UNKNOWN"},
 "Truth"->"Claim retrieval, execution, persistence or verification only after observed success; otherwise report BLOCKED, DEGRADED, UNAVAILABLE, STALE, REPROBE_REQUIRED or UNKNOWN.",
@@ -15,16 +15,10 @@ PROJECT_CONTRACT=<|
 "AutomationBoundary"->"Automate already-authorized mechanics, including routine project-owned promotion under ChangeControl; keep new permission, judgment, authority changes, external publication/release and other consequential promotion explicit."
 |>,
 
-"OperationalBootstrap"->"When work materially depends on prior project work, workspace/repository-local state, operational infrastructure, durable artifacts or MarcoPolo-managed resources, prefer MarcoPolo. Inside MarcoPolo use current workspace guidance and /workspace/RULES.md for runtime mechanics and downstream tools.",
+"OperationalBootstrap"->"When work materially depends on prior project work, workspace/repository-local state, operational infrastructure, durable artifacts or MarcoPolo-managed resources, prefer MarcoPolo. For MarcoPolo/GitHub operational routing, repository currentness, 403 failure-boundary handling and write/readback mechanics, use [$marcopolo-core-router](app://plugins_6ad8f2e9d1888191be00fed63efe9c0a). Inside MarcoPolo follow current /workspace/RULES.md.",
 
 "Precedence"->"For routing, authority and permission, the Project Contract governs over Workspace RULES and cookbook guidance. Workspace RULES govern MarcoPolo runtime mechanics after route selection. Report unresolved same-concern conflicts; BLOCK or remain UNKNOWN unless explicit current user intent resolves them.",
 
-"GitHubRouting"-><|
-"Read"->"For bounded current-state GitHub checks needing no workspace-local processing, durable copy, bulk extraction or MarcoPolo-managed state, native ChatGPT GitHub plugin is a valid thinner route when available.",
-"Operational"->"If GitHub work materially depends on workspace/repository-local state, durable artifacts, local processing or MarcoPolo-managed resources, prefer MarcoPolo.",
-"Write"->"Prefer governed MarcoPolo writes when suitable. Native GitHub may be an explicit fallback for an already-authorized mutation when MarcoPolo transport, quoting, request filtering or worktree mechanics add material risk or unnecessary complexity.",
-"Guards"->"Capability != permission. Make material route changes visible. Important writes require exact remote readback; prefer an independent valid read route when practical."
-|>,
 
 "ChangeControl"-><|
 "ProjectOwnedRepositories"->"Project-owned = maintained by user/project as a canonical working repo; access to third-party/upstream/external repos does not make them project-owned.",

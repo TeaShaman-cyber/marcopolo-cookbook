@@ -8,14 +8,18 @@ README = ROOT / "project" / "README.md"
 
 
 class ProjectContractSourceTest(unittest.TestCase):
-    def test_v8_source_has_required_project_level_contract(self):
+    def test_v9_source_has_required_project_level_contract(self):
         text = CONTRACT.read_text(encoding="utf-8")
 
         self.assertTrue(text.startswith("PROJECT_CONTRACT=<|"))
-        self.assertIn('"Revision"->"2026-09-thin-router-v8"', text)
-        self.assertIn('"Reply"->"PC_OK_V8"', text)
+        self.assertIn('"Revision"->"2026-10-skill-router-v9"', text)
+        self.assertIn('"Reply"->"PC_OK_V9"', text)
         self.assertIn('"CanonicalSource"', text)
-        self.assertIn('"GitHubRouting"-><|', text)
+        self.assertNotIn('"GitHubRouting"-><|', text)
+        self.assertIn(
+            "[$marcopolo-core-router](app://plugins_6ad8f2e9d1888191be00fed63efe9c0a)",
+            text,
+        )
         self.assertIn('"ChangeControl"-><|', text)
         self.assertIn('"IssueFirst"', text)
         self.assertIn('"ProjectOwnedPermission"', text)
@@ -86,7 +90,7 @@ class ProjectContractSourceTest(unittest.TestCase):
 
         self.assertIn("project/project-contract.wl", text)
         self.assertIn("PROJECT_CONTRACT_PROBE", text)
-        self.assertIn("PC_OK_V8", text)
+        self.assertIn("PC_OK_V9", text)
         self.assertIn("Issue #31", text)
 
 
