@@ -37,9 +37,10 @@ Choose the route by required capability and authority:
 - bounded current-state read with no workspace-local processing: native GitHub read is valid when available;
 - work depending on workspace files, local processing, durable artifacts, or MarcoPolo-managed state: prefer MarcoPolo;
 - mutation: require current authorization, use the governed write route, and perform exact remote readback;
-- capability-specific surfaces such as Projects must be probed directly rather than inferred from ordinary repository access.
+- capability-specific surfaces such as Projects must be probed directly rather than inferred from ordinary repository access;
+- visibility != existence: if one connector, installation, credential, or profile cannot resolve a repository or GitHub object, treat that result as UNKNOWN for existence until an appropriate authorized profile or authoritative surface confirms absence.
 
-Do not infer write authority from a successful read.
+Do not infer write authority from a successful read. Do not infer repository absence from profile-scoped invisibility.
 
 ## GitHub Projects coordination
 

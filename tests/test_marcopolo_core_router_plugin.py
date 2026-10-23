@@ -13,14 +13,14 @@ class MarcoPoloCoreRouterPluginTests(unittest.TestCase):
             cls.plugin_root / "skills" / "marcopolo-core-router" / "SKILL.md"
         )
 
-    def test_manifest_is_portable_plugin_v020(self):
+    def test_manifest_is_portable_plugin_v021(self):
         manifest = json.loads(self.manifest_path.read_text(encoding="utf-8"))
         self.assertEqual(
             manifest["$schema"],
             "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
         )
         self.assertEqual(manifest["name"], "marcopolo-core-router")
-        self.assertEqual(manifest["version"], "0.2.0")
+        self.assertEqual(manifest["version"], "0.2.1")
         interface = manifest["extensions"]["com.openai"]["interface"]
         self.assertEqual(interface["displayName"], "MarcoPolo Core Router")
         self.assertLessEqual(len(interface["shortDescription"]), 30)
@@ -42,6 +42,8 @@ class MarcoPoloCoreRouterPluginTests(unittest.TestCase):
             "coordination projection",
             "narrowest owning",
             "reverse issue/PR projectItems",
+            "visibility != existence",
+            "appropriate authorized profile",
         ):
             self.assertIn(required, text)
 
