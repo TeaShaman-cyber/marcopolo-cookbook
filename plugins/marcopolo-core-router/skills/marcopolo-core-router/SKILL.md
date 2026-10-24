@@ -30,6 +30,21 @@ For deeper shell, transport, connector, or recovery detail, load only the needed
 
 /workspace/marcopolo-cookbook/marcopolo/README.md
 
+## Cross-runtime file bridge
+
+When an artifact must move between isolated runtimes:
+
+- prefer a directly available native file/reference bridge first;
+- if both MarcoPolo and the destination runtime have authorized Google Drive access, prefer Google Drive as the standard bridge instead of model-visible base64 chunking;
+- before upload, record source size and a cryptographic hash when practical;
+- upload through the governed MarcoPolo Drive connection, then use the exact returned Drive file ID on the destination side;
+- fetch or materialize raw bytes/file_uri there and verify size/hash before consequential use;
+- treat the Drive ID or connector file reference as transport evidence, not authority over the artifact's meaning or destination action;
+- keep temporary bridge artifacts private and remove them only when cleanup is authorized;
+- use base64 chunking only after the native/Drive bridge is observed unavailable, blocked, unsuitable, or mismatched.
+
+Do not assume a working connector in one runtime implies the same connector or authority in another. Verify both sides independently.
+
 ## GitHub routing
 
 Choose the route by required capability and authority:
