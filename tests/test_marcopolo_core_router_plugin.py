@@ -13,14 +13,14 @@ class MarcoPoloCoreRouterPluginTests(unittest.TestCase):
             cls.plugin_root / "skills" / "marcopolo-core-router" / "SKILL.md"
         )
 
-    def test_manifest_is_portable_plugin_v021(self):
+    def test_manifest_is_portable_plugin_v022(self):
         manifest = json.loads(self.manifest_path.read_text(encoding="utf-8"))
         self.assertEqual(
             manifest["$schema"],
             "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
         )
         self.assertEqual(manifest["name"], "marcopolo-core-router")
-        self.assertEqual(manifest["version"], "0.2.1")
+        self.assertEqual(manifest["version"], "0.2.2")
         interface = manifest["extensions"]["com.openai"]["interface"]
         self.assertEqual(interface["displayName"], "MarcoPolo Core Router")
         self.assertLessEqual(len(interface["shortDescription"]), 30)
@@ -44,6 +44,9 @@ class MarcoPoloCoreRouterPluginTests(unittest.TestCase):
             "reverse issue/PR projectItems",
             "visibility != existence",
             "appropriate authorized profile",
+            "## Cross-runtime file bridge",
+            "prefer Google Drive as the standard bridge",
+            "use base64 chunking only after",
         ):
             self.assertIn(required, text)
 
