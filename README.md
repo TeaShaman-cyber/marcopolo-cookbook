@@ -31,10 +31,11 @@ A path, dependency, or artifact observed in one runtime is not assumed to exist 
 - [Lightweight development gate](tools/dev/README.md) — pinned standalone editor/linters with NFS-light caches and changed-file deterministic local QA.
 - [Verification ladder](docs/operations/verification-ladder.md) — L0 MarcoPolo fast feedback, L1 hosted CI, L2 Codespace heavy debugging, and the learning loop that promotes recurring findings into executable checks.
 - [Repository lifecycle](docs/operations/lifecycle.md) — issue/PR/Project disposition, migration, acceptance, release, and exact-readback boundaries; `tools/dev/check` is the canonical first local QA gate.
+- [Headless browser OAuth callback relay](docs/operations/headless-browser-oauth-relay.md) — userspace relay for loopback OAuth callbacks when the browser runs outside MarcoPolo, with lifecycle and verification boundaries.
 - [Changelog](CHANGELOG.md) — versioned release scope, verification snapshot, and known debt/backlog that remains open after publication.
 - [Jester forum notes](jester-forum/README.md) — bounded forum workflow notes.
 
-Additional top-level scripts provide GitHub/wiki wrappers and access checks used by the workspace.
+Additional top-level scripts provide GitHub/wiki wrappers and access checks used in the workspace.
 
 ## Small review methods
 
@@ -49,7 +50,7 @@ Secrets, tokens, cookies, auth caches, `.env` files, private keys, and generated
 
 ## Repository hygiene
 
-Generated dependencies and caches such as `node_modules/`, `__pycache__/`, Python bytecode, virtual environments, logs, and unreviewed `mcporter/traces/` are excluded from version control.
+Generated dependencies and caches such as `node_modules/`, `__pycache__/`, Python bytecode, virtualenvs, logs, and unreviewed `mcporter/traces/` are excluded from version control.
 
 ## Releases and versioning
 
