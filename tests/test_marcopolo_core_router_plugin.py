@@ -13,14 +13,14 @@ class MarcoPoloCoreRouterPluginTests(unittest.TestCase):
             cls.plugin_root / "skills" / "marcopolo-core-router" / "SKILL.md"
         )
 
-    def test_manifest_is_portable_plugin_v023(self):
+    def test_manifest_is_portable_plugin_v024(self):
         manifest = json.loads(self.manifest_path.read_text(encoding="utf-8"))
         self.assertEqual(
             manifest["$schema"],
             "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
         )
         self.assertEqual(manifest["name"], "marcopolo-core-router")
-        self.assertEqual(manifest["version"], "0.2.3")
+        self.assertEqual(manifest["version"], "0.2.4")
         interface = manifest["extensions"]["com.openai"]["interface"]
         self.assertEqual(interface["displayName"], "MarcoPolo Core Router")
         self.assertLessEqual(len(interface["shortDescription"]), 30)
@@ -55,6 +55,21 @@ class MarcoPoloCoreRouterPluginTests(unittest.TestCase):
             "model-visible plaintext",
         ):
             self.assertIn(required, text)
+
+    def test_skill_repeats_project_precedence_over_vendor_plugin_skills(self):
+        text = self.skill_path.read_text(encoding="utf-8")
+        self.assertIn("Project Contract", text)
+        self.assertIn("vendor/plugin skills", text)
+        self.assertIn("mechanics guidance", text)
+        self.assertIn("must not override", text)
+        self.assertIn("routing, authority, or permission", text)
+
+    def test_skill_requires_write_bootstrap_before_first_github_mutation(self):
+        text = self.skill_path.read_text(encoding="utf-8")
+        self.assertIn("before the first GitHub mutation", text)
+        self.assertIn("gh-write", text)
+        self.assertIn("github-write-preflight.sh", text)
+        self.assertIn("BLOCKED", text)
 
     def test_skill_routes_detail_instead_of_copying_the_cookbook(self):
         text = self.skill_path.read_text(encoding="utf-8")

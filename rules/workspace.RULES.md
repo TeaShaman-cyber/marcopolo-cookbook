@@ -194,6 +194,14 @@ Use this matrix:
 | bounded repo/issue/PR read | native GitHub plugin, or `GH_CONFIG_DIR=/workspace/.config/gh` for workspace-local processing | smallest live read succeeds |
 | Projects V2 read | capability-verified Projects profile; currently `GH_CONFIG_DIR=/workspace/.config/gh-write` | `auth status` plus live Project probe succeeds |
 | explicitly authorized GitHub mutation | `GH_CONFIG_DIR=/workspace/.config/gh-write` | mutation plus exact remote readback |
+
+Before the first GitHub mutation in a reconstructed or materially changed runtime, run:
+
+```bash
+/workspace/marcopolo-cookbook/github-write-preflight.sh --check
+```
+
+If it reports `BLOCKED`, stop before mutation. Do not use a failed `git push` as the discovery mechanism for a missing `gh-write` profile or stale helper binding.
 | authorized Projects V2 mutation | `gh-write` with verified Projects capability | Project mutation plus Project readback |
 | ordinary Git smart-HTTP | cookbook-managed credential helper pinned to `gh-write` | helper check; remote readback when freshness matters |
 

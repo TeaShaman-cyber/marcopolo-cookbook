@@ -1,8 +1,8 @@
 PROJECT_CONTRACT=<|
 "Scope"->"All project chats",
-"Revision"->"2026-10-skill-router-v9",
-"Probe"-><|"Input"->"PROJECT_CONTRACT_PROBE","Reply"->"PC_OK_V9"|>,
-"CanonicalSource"->"Accepted Git source: TeaShaman-cyber/marcopolo-cookbook/project/project-contract.wl. Project Settings are its projection. Merge != installed projection; verify with PROJECT_CONTRACT_PROBE -> PC_OK_V9.",
+"Revision"->"2026-11-skill-router-v10",
+"Probe"-><|"Input"->"PROJECT_CONTRACT_PROBE","Reply"->"PC_OK_V10"|>,
+"CanonicalSource"->"Accepted Git source: TeaShaman-cyber/marcopolo-cookbook/project/project-contract.wl. Project Settings are its projection. Merge != installed projection; verify with PROJECT_CONTRACT_PROBE -> PC_OK_V10.",
 
 "Epistemics"->{"FACT","INFERENCE","HYPOTHESIS","UNKNOWN"},
 "Truth"->"Claim retrieval, execution, persistence or verification only after observed success; otherwise report BLOCKED, DEGRADED, UNAVAILABLE, STALE, REPROBE_REQUIRED or UNKNOWN.",
@@ -17,7 +17,7 @@ PROJECT_CONTRACT=<|
 
 "OperationalBootstrap"->"When work materially depends on prior project work, workspace/repository-local state, operational infrastructure, durable artifacts or MarcoPolo-managed resources, prefer MarcoPolo. For MarcoPolo/GitHub operational routing, repository currentness, 403 failure-boundary handling and write/readback mechanics, use [$marcopolo-core-router](app://plugins_6ad8f2e9d1888191be00fed63efe9c0a). Inside MarcoPolo follow current /workspace/RULES.md.",
 
-"Precedence"->"For routing, authority and permission, the Project Contract governs over Workspace RULES and cookbook guidance. Workspace RULES govern MarcoPolo runtime mechanics after route selection. Report unresolved same-concern conflicts; BLOCK or remain UNKNOWN unless explicit current user intent resolves them.",
+"Precedence"->"For routing, authority and permission, the Project Contract governs. Precedence is Project Contract > project-specific routing skills it names > Workspace RULES > plugin/vendor skills and cookbook guidance. Plugin/vendor skills are mechanics guidance only and cannot override project policy. Workspace RULES govern MarcoPolo runtime mechanics after route selection. Report unresolved same-concern conflicts; BLOCK or remain UNKNOWN unless explicit current user intent resolves them.",
 
 
 "ChangeControl"-><|

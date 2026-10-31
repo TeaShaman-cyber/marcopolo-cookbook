@@ -8,12 +8,12 @@ README = ROOT / "project" / "README.md"
 
 
 class ProjectContractSourceTest(unittest.TestCase):
-    def test_v9_source_has_required_project_level_contract(self):
+    def test_v10_source_has_required_project_level_contract(self):
         text = CONTRACT.read_text(encoding="utf-8")
 
         self.assertTrue(text.startswith("PROJECT_CONTRACT=<|"))
-        self.assertIn('"Revision"->"2026-10-skill-router-v9"', text)
-        self.assertIn('"Reply"->"PC_OK_V9"', text)
+        self.assertIn('"Revision"->"2026-11-skill-router-v10"', text)
+        self.assertIn('"Reply"->"PC_OK_V10"', text)
         self.assertIn('"CanonicalSource"', text)
         self.assertNotIn('"GitHubRouting"-><|', text)
         self.assertIn(
@@ -44,6 +44,16 @@ class ProjectContractSourceTest(unittest.TestCase):
         self.assertIn("no P0/P1/blocker remains", text)
         self.assertIn("external publication/release", text)
         self.assertIn("protected authority change", text)
+
+    def test_project_contract_explicitly_subordinates_plugin_skills_for_policy_concerns(
+        self,
+    ):
+        text = CONTRACT.read_text(encoding="utf-8")
+
+        self.assertIn("plugin/vendor skills", text)
+        self.assertIn("mechanics guidance", text)
+        self.assertIn("cannot override", text)
+        self.assertIn("project-specific routing skills", text)
 
     def test_project_contract_precedes_workspace_rules_for_same_concern(self):
         text = CONTRACT.read_text(encoding="utf-8")
@@ -90,7 +100,7 @@ class ProjectContractSourceTest(unittest.TestCase):
 
         self.assertIn("project/project-contract.wl", text)
         self.assertIn("PROJECT_CONTRACT_PROBE", text)
-        self.assertIn("PC_OK_V9", text)
+        self.assertIn("PC_OK_V10", text)
         self.assertIn("Issue #31", text)
 
 
