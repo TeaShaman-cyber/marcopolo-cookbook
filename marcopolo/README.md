@@ -890,6 +890,14 @@ Install the binding once:
 /workspace/marcopolo-cookbook/github-git-auth.sh --install
 ```
 
+Before the first GitHub mutation in a reconstructed or materially changed runtime, fail closed on missing bootstrap:
+
+```bash
+/workspace/marcopolo-cookbook/github-write-preflight.sh --check
+```
+
+This checks that the isolated `gh-write` profile exists and that the cookbook-managed Git helper is bound before any mutation is attempted. A missing profile is `BLOCKED`, not a reason to discover the problem through `git push`.
+
 The installer keeps Git's host-specific empty helper entry, which resets inherited generic helpers, and then binds `github.com` directly to:
 
 ```text
