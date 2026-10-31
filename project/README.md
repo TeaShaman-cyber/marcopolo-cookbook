@@ -13,11 +13,11 @@ accepted Git source
 
 A merge proves only the accepted Git source. It does not prove that ChatGPT Project Settings were updated.
 
-For revision `2026-10-skill-router-v9`, a correctly updated project runtime must answer:
+For revision `2026-11-skill-router-v10`, a correctly updated project runtime must answer:
 
 ```text
 PROJECT_CONTRACT_PROBE
--> PC_OK_V9
+-> PC_OK_V10
 ```
 
 ## Layering
