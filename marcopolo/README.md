@@ -58,7 +58,7 @@ connection_setup / connection add
   -> connector operation
 ```
 
-A September 2026 JSON-connector smoke established that stored connection configuration could be retrieved by the connector runner and used to construct HTTP Basic authentication without placing the configured password in a workspace query file. This is evidence for a privileged credential boundary for connector execution.
+A September 2026 Theseus project experiment named `json-keychain-smoke` used MarcoPolo's native `json` connector as a building block. The experiment was our attempt to construct a keychain/credential-broker pattern on top of the connector; it was not a first-party MarcoPolo keychain feature. What the experiment established was narrower: the native connector runner could retrieve its stored connection configuration and construct HTTP Basic authentication without placing the configured password in a workspace query file. That is evidence for a privileged credential boundary inside supported connector execution, not for a generic MarcoPolo keychain.
 
 Keep the boundary narrow:
 
