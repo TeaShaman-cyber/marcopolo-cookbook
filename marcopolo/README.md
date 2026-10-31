@@ -44,6 +44,36 @@ For lightweight pre-review validation in this cookbook, use `tools/dev/check`. I
 
 ---
 
+## Managed connection credentials are a scoped privileged boundary
+
+MarcoPolo credentialed connections use a browser setup flow for supported connection types. The user enters OAuth or configuration credentials outside the workspace/model interaction, and the workspace later operates on the named connection rather than on plaintext credential values.
+
+Observed in the current connection workflow:
+
+```text
+connection_setup / connection add
+  -> browser setup
+  -> managed connection
+  -> connection list / test
+  -> connector operation
+```
+
+A September 2026 JSON-connector smoke established that stored connection configuration could be retrieved by the connector runner and used to construct HTTP Basic authentication without placing the configured password in a workspace query file. This is evidence for a privileged credential boundary for connector execution.
+
+Keep the boundary narrow:
+
+```text
+secret -> supported privileged connector execution   VERIFIED for tested connection paths
+secret -> arbitrary local subprocess / env / stdin   UNKNOWN unless a supported interface proves it
+unsupported provider -> managed credential route     UNKNOWN until the live catalog resolves it
+```
+
+Do not generalize a working connection to unsupported providers or arbitrary CLI processes. Probe the live catalog through `connection_setup` / `connection add` first.
+
+Also do not treat privileged storage as automatic output redaction. A provider or diagnostic endpoint can reflect an Authorization header or other secret-derived material in its response. Never use real credentials against echo/debug endpoints, keep query targets bounded, and inspect/sanitize returned data before persisting it.
+
+If the provider is not registered as a canonical connection type, do not paste a static key into chat, Git, workspace files, or command arguments as a convenience fallback. Prefer a provider-native OAuth/device flow or another authorized credential surface; otherwise report the missing capability explicitly.
+
 ## Runtime map: three environments that are easy to accidentally merge
 
 ```text

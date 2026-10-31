@@ -1,6 +1,6 @@
 ---
 name: marcopolo-core-router
-description: Use when work involves MarcoPolo workspace state, GitHub route selection across runtimes, repository currentness, 403 failures, or verified persistence/completion.
+description: Use when work involves MarcoPolo authority or credentialed connection setup, workspace state, GitHub route selection across runtimes, repository currentness, 403 failures, or verified persistence/completion.
 ---
 
 # MarcoPolo Core Router
@@ -29,6 +29,16 @@ When work depends on /workspace state:
 For deeper shell, transport, connector, or recovery detail, load only the needed section from:
 
 /workspace/marcopolo-cookbook/marcopolo/README.md
+
+## Managed credential connections
+
+For user-owned APIs, databases, storage, or other credentialed integrations:
+
+- check the current `connection_setup` / connection catalog before inventing plaintext files, ad-hoc vaults, or custom secret plumbing;
+- a credentialed MarcoPolo connection can provide a privileged credential boundary: browser setup captures authentication outside the workspace/model path and the connector uses stored credentials for its advertised operations;
+- that boundary is capability-scoped: it does not imply secret injection into an arbitrary local subprocess or support for an unregistered provider type; treat those paths as UNKNOWN until exposed and verified;
+- verify the resulting connection with current list/test/capability readback, and inspect returned data for accidental credential reflection; privileged storage does not guarantee that an upstream response will redact authentication material;
+- if no canonical connection type exists, do not fall back to model-visible plaintext merely to make the integration work; choose another authorized provider-native authentication route or report the capability gap.
 
 ## Cross-runtime file bridge
 
