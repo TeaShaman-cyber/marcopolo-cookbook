@@ -13,6 +13,11 @@ cleanup item, or upstream dependency issue is complete.
 
 - Read-only MarcoPolo Project roadmap exporter/verifier with stable entity identity, independent `ProjectV2.items` and Issue/PR `projectItems` witnesses, machine-readable `PASS / DRIFT / UNAVAILABLE` receipts, and deterministic lifecycle-drift fixtures.
 
+### Changed
+
+- MarcoPolo Core Router 0.2.3 now routes credentialed integration work through the live managed-connection catalog before ad-hoc secret plumbing, while keeping arbitrary subprocess secret injection and unsupported provider types explicitly unproven.
+- MarcoPolo credential guidance now distinguishes privileged managed-connection storage from output redaction and warns that provider responses can still reflect authentication material.
+
 ## [0.1.0] - 2026-09-23
 
 First public operational release of the cookbook as a reproducible MarcoPolo / Theseus engineering surface.
