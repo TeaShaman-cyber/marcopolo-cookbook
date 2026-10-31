@@ -6,9 +6,9 @@ description: Use when work involves MarcoPolo authority or credentialed connecti
 # MarcoPolo Core Router
 
 Use this skill as a thin operational guardrail, not as a replacement for the cookbook.
-
+## Authority precedence
+The Project Contract remains authoritative for routing, authority, permission, and change control. This project-specific routing skill operates under that contract; vendor/plugin skills are mechanics guidance only and must not override it or this skill on routing, authority, or permission. "Read this first" is invocation guidance, not project-policy precedence.
 ## Fast path
-
 1. Identify the authority domain and runtime boundary before choosing a tool.
 2. Use the thinnest valid route that preserves freshness, permission, verification, and required durability.
 3. Load only the smallest relevant section of current operational guidance.
@@ -61,6 +61,7 @@ Choose the route by required capability and authority:
 
 - bounded current-state read with no workspace-local processing: native GitHub read is valid when available;
 - work depending on workspace files, local processing, durable artifacts, or MarcoPolo-managed state: prefer MarcoPolo;
+- before the first GitHub mutation in a reconstructed or changed runtime, verify `gh-write` with `/workspace/marcopolo-cookbook/github-write-preflight.sh --check`; if it reports BLOCKED, stop before mutation and repair bootstrap rather than discovering the missing write profile through a failed push;
 - mutation: require current authorization, use the governed write route, and perform exact remote readback;
 - capability-specific surfaces such as Projects must be probed directly rather than inferred from ordinary repository access;
 - visibility != existence: if one connector, installation, credential, or profile cannot resolve a repository or GitHub object, treat that result as UNKNOWN for existence until an appropriate authorized profile or authoritative surface confirms absence.
