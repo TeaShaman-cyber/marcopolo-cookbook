@@ -194,6 +194,8 @@ Use this matrix:
 | bounded repo/issue/PR read | native GitHub plugin, or `GH_CONFIG_DIR=/workspace/.config/gh` for workspace-local processing | smallest live read succeeds |
 | Projects V2 read | capability-verified Projects profile; currently `GH_CONFIG_DIR=/workspace/.config/gh-write` | `auth status` plus live Project probe succeeds |
 | explicitly authorized GitHub mutation | `GH_CONFIG_DIR=/workspace/.config/gh-write` | mutation plus exact remote readback |
+| authorized Projects V2 mutation | `gh-write` with verified Projects capability | Project mutation plus Project readback |
+| ordinary Git smart-HTTP | cookbook-managed credential helper pinned to `gh-write` | helper check; remote readback when freshness matters |
 
 Before the first GitHub mutation in a reconstructed or materially changed runtime, run:
 
@@ -201,9 +203,14 @@ Before the first GitHub mutation in a reconstructed or materially changed runtim
 /workspace/marcopolo-cookbook/github-write-preflight.sh --check
 ```
 
-If it reports `BLOCKED`, stop before mutation. Do not use a failed `git push` as the discovery mechanism for a missing `gh-write` profile or stale helper binding.
-| authorized Projects V2 mutation | `gh-write` with verified Projects capability | Project mutation plus Project readback |
-| ordinary Git smart-HTTP | cookbook-managed credential helper pinned to `gh-write` | helper check; remote readback when freshness matters |
+If it reports `BLOCKED stage=profile reason=gh_write_profile_missing`, recover the isolated write profile through the runtime-safe one-shot route:
+
+```bash
+/workspace/marcopolo-cookbook/github-write-oauth-recover.sh --schedule-login
+/workspace/marcopolo-cookbook/github-write-oauth-recover.sh --status
+```
+
+Do not copy a read-profile token into `gh-write`, and do not use a failed `git push` as the discovery mechanism for missing write bootstrap. Browser approval is intermediate evidence only; continue only after `--status` reports `GH_WRITE_OAUTH VERIFIED` and the normal preflight succeeds.
 
 The default MarcoPolo profile may use a GitHub App user token (`ghu_...`).
 Repository reads succeeding through that token do not prove Projects access.

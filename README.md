@@ -24,6 +24,7 @@ A path, dependency, or artifact observed in one runtime is not assumed to exist 
 - [Session Search](session-search/README.md) — reconstruct prior session evidence from exported conversation history.
 - [Workspace RULES projection](rules/workspace.RULES.md) — Git-reviewed source for small workspace-wide runtime routing guidance.
 - [`github-git-auth.sh`](github-git-auth.sh) — one-time/default GitHub Git credential binding to the governed `gh-write` profile.
+- [`github-write-oauth-recover.sh`](github-write-oauth-recover.sh) — cron-backed one-shot GitHub device-flow recovery for a missing governed `gh-write` profile.
 - [Project IaC](project/README.md) — Git-versioned source for cross-chat project routing, authority, and change-control policy.
 - [Roadmap verifier](tools/project-roadmap/README.md) — read-only Project graph export/check with independent project-listing and Issue/PR reverse-membership witnesses.
 - [mcporter workbench](mcporter/README.md) — bounded MCP client setup, inventory, probes, and acceptance checks.
