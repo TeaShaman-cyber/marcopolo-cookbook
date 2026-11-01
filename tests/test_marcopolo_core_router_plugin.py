@@ -20,7 +20,7 @@ class MarcoPoloCoreRouterPluginTests(unittest.TestCase):
             "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
         )
         self.assertEqual(manifest["name"], "marcopolo-core-router")
-        self.assertEqual(manifest["version"], "0.2.4")
+        self.assertEqual(manifest["version"], "0.2.5")
         interface = manifest["extensions"]["com.openai"]["interface"]
         self.assertEqual(interface["displayName"], "MarcoPolo Core Router")
         self.assertLessEqual(len(interface["shortDescription"]), 30)

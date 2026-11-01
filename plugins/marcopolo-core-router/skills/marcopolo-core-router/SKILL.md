@@ -83,23 +83,15 @@ Treat GitHub Projects as a coordination projection, not authority or permission.
 
 ## 403 rule
 
-A 403 is a routing signal, not a diagnosis.
+A 403 is a routing signal, not a diagnosis: `CALL_BLOCKED / ROUTE_HEALTH_UNKNOWN`; never declare the route UNAVAILABLE from one 403.
 
-If a MarcoPolo/control-plane rejection happens before target execution:
+After a MarcoPolo `workspace_shell` control-plane rejection, MUST:
+1. Establish whether target execution occurred. If a mutation may have run, check its postcondition before any retry; a read-only canary never proves target success.
+2. Reprobe with neutral `workspace_shell("date")` (or `pwd`): max 2 small read-only probes, not the same rejected payload. If blocked, report `DEGRADED / REPROBE_REQUIRED / ROUTE_HEALTH_UNKNOWN`, not a dead route.
+3. If the canary succeeds, report `ROUTE_AVAILABLE / CALL_BLOCKED`; original command remains unverified. Retry needed work with a smaller or normalized payload; do not repeat the same failing payload unchanged.
+4. Allow fallback only after observed route/capability insufficiency or blocked neutral probes, preserving authority, permissions, and exact readback. Do not promote a guessed outage into a fact.
 
-- do not claim that the target command ran or failed;
-- verify the target postcondition first;
-- if the payload is multiline, structured, or quoting-sensitive, normalize transport before retrying;
-- do not repeat the same failing payload unchanged.
-
-If Git or GitHub returns 403:
-
-- identify the credential/profile and required capability;
-- distinguish provider capability from repository permission;
-- switch route only after the failure boundary is understood;
-- after any authorized mutation, perform exact remote readback.
-
-If the boundary remains unresolved, report DEGRADED or UNKNOWN instead of guessing.
+If Git or GitHub returns 403: identify the credential/profile and required capability; separate provider authorization from transport rejection, and verify the write postcondition before retry. A read-profile failure does not prove repository absence.
 
 ## Verification and persistence
 
