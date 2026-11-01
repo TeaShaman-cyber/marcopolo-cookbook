@@ -39,7 +39,11 @@ set -eu
 printf '%s\n' "$*" >>"$FAKE_GH_LOG"
 [ "${GH_CONFIG_DIR:-}" = "${EXPECTED_WRITE_CFG:?}" ] || exit 92
 if [ "${1:-} ${2:-} ${3:-}" = "api -i user" ]; then
-  printf '%s\n' "X-OAuth-Scopes: ${FAKE_GH_SCOPES:-repo, read:org, gist}"
+  if [ "${FAKE_GH_CRLF:-0}" = 1 ]; then
+    printf 'X-OAuth-Scopes: %s\r\n' "${FAKE_GH_SCOPES:-repo, read:org, gist}"
+  else
+    printf '%s\n' "X-OAuth-Scopes: ${FAKE_GH_SCOPES:-repo, read:org, gist}"
+  fi
   exit 0
 fi
 if [ "$1 $2" = "auth login" ]; then
@@ -96,6 +100,18 @@ ready_env="FAKE_CRONTAB_FILE=$READY_CRONTAB_FILE FAKE_GH_LOG=$GH_LOG FAKE_GH_SCO
 # shellcheck disable=SC2086
 env $ready_env "$SCRIPT" --schedule-login >"$TMP/ready-schedule.out"
 grep -F 'reason=already_ready' "$TMP/ready-schedule.out" >/dev/null
+
+# CRLF response headers from `gh api -i` must not make a ready token look incomplete
+CRLF_STATE="$TMP/crlf-state"
+CRLF_WRITE_CFG="$TMP/crlf-gh-write"
+CRLF_CRONTAB_FILE="$TMP/crlf-crontab"
+mkdir -p "$CRLF_WRITE_CFG"
+printf '%s\n' synthetic >"$CRLF_WRITE_CFG/hosts.yml"
+: >"$CRLF_CRONTAB_FILE"
+crlf_env="FAKE_CRONTAB_FILE=$CRLF_CRONTAB_FILE FAKE_GH_LOG=$GH_LOG FAKE_GH_CRLF=1 FAKE_GH_SCOPES=repo,read:org,gist,project,codespace EXPECTED_WRITE_CFG=$CRLF_WRITE_CFG GH_WRITE_OAUTH_STATE_DIR=$CRLF_STATE GH_WRITE_CONFIG=$CRLF_WRITE_CFG GH_BIN=$BIN/gh CRONTAB_BIN=$BIN/crontab GITHUB_GIT_AUTH=$BIN/auth-check GITHUB_WRITE_PREFLIGHT=$BIN/preflight"
+# shellcheck disable=SC2086
+env $crlf_env "$SCRIPT" --schedule-login >"$TMP/crlf-schedule.out"
+grep -F 'reason=already_ready' "$TMP/crlf-schedule.out" >/dev/null
 
 # requesting additional scopes must not short-circuit on generic repo-write readiness
 SCOPED_STATE="$TMP/scoped-state"

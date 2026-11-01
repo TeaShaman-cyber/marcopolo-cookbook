@@ -103,7 +103,7 @@ profile_ready() {
 scope_set_ready() {
 	profile_ready || return 1
 	headers=$(GH_CONFIG_DIR="$WRITE_CFG" "$GH_BIN" api -i user 2>/dev/null) || return 1
-	granted=$(printf '%s\n' "$headers" | awk 'tolower($0) ~ /^x-oauth-scopes:/ { sub(/^[^:]*:[[:space:]]*/, ""); print; exit }')
+	granted=$(printf '%s\n' "$headers" | tr -d '\r' | awk 'tolower($0) ~ /^x-oauth-scopes:/ { sub(/^[^:]*:[[:space:]]*/, ""); print; exit }')
 	[ -n "$granted" ] || return 1
 	for required in $(printf '%s' "$SCOPES" | tr ',' ' '); do
 		printf '%s\n' "$granted" | tr ',' '\n' | awk '{$1=$1; print}' | grep -Fx "$required" >/dev/null 2>&1 || return 1
