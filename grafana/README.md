@@ -34,17 +34,28 @@ Use one-shot cron plus callback relay; confirm profile by independent dashboard 
 - SSH output may contain carriage returns. Strip those before extracting the temporary HTTPS origin.
 - A browser rendering error is not proof of a CLI failure; inspect the ongoing session first.
 
-## Current commands
+## Versioned install and recovery
 
-The tested helper exists in the current workspace; check its presence in any new runtime:
+From a current reviewed checkout of this cookbook, use the pinned Linux amd64 installer (v1.7.1):
 
 ```sh
-test -x /workspace/tools/gcx/issue133-relay-login.sh
-/workspace/tools/gcx/issue133-relay-login.sh --schedule
-/workspace/tools/gcx/issue133-relay-login.sh --status
+grafana/gcx.sh --download     # explicit network access; checks pinned archive SHA-256
+grafana/gcx.sh --install      # verifies extracted binary and installs OAuth helper
+grafana/gcx.sh --check        # binary hash plus helper/source equality
 ```
 
-If the helper is missing, follow the [accepted GitHub cron recovery](../github-write-oauth-recover.sh) and [browser callback relay](../docs/operations/headless-browser-oauth-relay.md). Its runtime presence is not proof of a versioned installer; that follow-up remains under [issue #133](https://github.com/TeaShaman-cyber/marcopolo-cookbook/issues/133).
+Routine `grafana/gcx.sh <args>` does not download or authorize anything. The installed helper is `/workspace/tools/gcx/gcx-oauth-relay.sh`; its source is `grafana/gcx-oauth-relay.sh`. Do not copy OAuth profile files to Git or reset an already valid profile merely to test the installer.
+
+Check the existing profile first. A new login is only for a missing, expired, or explicitly replaced session. After the user **explicitly approves unencrypted-at-rest storage** in this runtime, use:
+
+```sh
+GCX_FILE_STORAGE_APPROVED=1 /workspace/tools/gcx/gcx-oauth-relay.sh --schedule
+/workspace/tools/gcx/gcx-oauth-relay.sh --status
+```
+
+The one-shot cron task launches the CLI and tunnel, deletes its schedule, and exposes the public login URL, verification code, and temporary HTTPS origin. After approval, the browser must deliver the callback directly to the tunnel, never to chat. `--cancel` revokes a queued login and its one-use approval; `--cleanup` removes transient logs after the login finishes. Preserve the private profile.
+
+If the installed helper is absent, reinstall it from **the current reviewed Git source** using `--install`; the helper and its bytes must match the source. Never reuse an unreviewed runtime-local version.
 
 After authorization, read back the saved profile without printing its contents:
 
