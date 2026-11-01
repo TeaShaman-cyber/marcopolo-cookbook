@@ -923,27 +923,32 @@ After installation, plain `git fetch` / `git pull` / `git push` no longer requir
 
 If plain Git returns `403`, run `github-git-auth.sh --check` and a non-mutating `git push --dry-run` before classifying the failure as smart-HTTP transport or escalating to another write route.
 
-## 24. Use local temporary storage as a build/runtime proxy for heavy tool trees
+## 24. Use local temporary storage as an execution proxy, not durable state
 
 ### Observed failure mode
 
 Large npm/runtime trees written directly under `/workspace` NFS produced multiple failure classes during the MCPJam and mcporter work: `ENOTEMPTY` during destructive cleanup, incomplete copied trees, and expensive recursive operations. The same package installation completed normally on local `/tmp`.
 
+A separate failure class appeared with heavy Codespace work: an expensive Session Search corpus and benchmark state were built under Codespace-local `/tmp`; when that Codespace disappeared, the derived corpus and final receipt disappeared with it even though the immutable source exports remained durable elsewhere.
+
 ### Accepted pattern
 
 ```text
-local /tmp build/install
-        -> verify exact versions/content
-        -> persist one archive + checksum on /workspace NFS
-        -> expand archive into local /tmp cache at runtime
-        -> execute through a wrapper
+durable source
+        -> local /tmp or executor scratch for build/compute
+        -> verify output
+        -> promote continuation-critical result + size/SHA-256 + receipt/manifest
+        -> read back durable copy
+        -> only then treat executor-local state as disposable
 ```
 
-Treat the NFS artifact as durable storage and `/tmp` as the execution/build filesystem. On executor restart the cache may disappear; the wrapper must reconstruct it from the persistent archive and verify it before use.
+Use `/tmp`, Codespace-local disks, and runner-local scratch as the execution/build filesystem. Use an authorized durable store for expensive derived artifacts or anything required to continue later. On executor restart or deletion the scratch copy may disappear; either the output must be cheaply reconstructible from durable inputs, or it must already have been promoted and verified.
+
+For heavy tool trees, the durable object can be a single archive + checksum on `/workspace` NFS that is expanded into `/tmp` at runtime. For large corpora, indexes, benchmark outputs, or similar derived data, prefer the durable store already authoritative for that workflow (for example Drive/object storage/artifact storage) rather than forcing the bytes through MarcoPolo NFS.
 
 Do not replace platform-owned runtimes merely to satisfy one tool. For mcporter, system Node 22 remains untouched while the wrapper uses a private Node 24 runtime recovered from the archive.
 
-This pattern is especially useful for npm/node_modules, large language runtimes, generated SDK trees, and other workloads with many small-file create/delete/rename operations.
+This pattern is especially useful for npm/node_modules, large language runtimes, generated SDK trees, corpora/indexes, benchmark outputs, and other workloads where local scratch is operationally useful but loss would otherwise force meaningful repeated work.
 
 ---
 
