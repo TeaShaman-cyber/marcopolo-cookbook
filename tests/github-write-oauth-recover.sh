@@ -38,6 +38,14 @@ cat >"$BIN/gh" <<'GH'
 set -eu
 printf '%s\n' "$*" >>"$FAKE_GH_LOG"
 [ "${GH_CONFIG_DIR:-}" = "${EXPECTED_WRITE_CFG:?}" ] || exit 92
+if [ "${1:-} ${2:-} ${3:-}" = "api -i user" ]; then
+  if [ "${FAKE_GH_CRLF:-0}" = 1 ]; then
+    printf 'X-OAuth-Scopes: %s\r\n' "${FAKE_GH_SCOPES:-repo, read:org, gist}"
+  else
+    printf '%s\n' "X-OAuth-Scopes: ${FAKE_GH_SCOPES:-repo, read:org, gist}"
+  fi
+  exit 0
+fi
 if [ "$1 $2" = "auth login" ]; then
   printf '%s\n' '! First copy your one-time code: TEST-CODE' \
     'Open this URL to continue in your web browser: https://github.com/login/device' \
@@ -69,6 +77,42 @@ chmod +x "$BIN/preflight"
 
 common_env="FAKE_CRONTAB_FILE=$CRONTAB_FILE FAKE_GH_LOG=$GH_LOG EXPECTED_WRITE_CFG=$WRITE_CFG GH_WRITE_OAUTH_STATE_DIR=$STATE GH_WRITE_CONFIG=$WRITE_CFG GH_BIN=$BIN/gh CRONTAB_BIN=$BIN/crontab GITHUB_GIT_AUTH=$BIN/auth-check GITHUB_WRITE_PREFLIGHT=$BIN/preflight"
 
+# an existing generic-ready profile missing canonical scopes must schedule recovery
+MISSING_STATE="$TMP/missing-state"
+MISSING_WRITE_CFG="$TMP/missing-gh-write"
+MISSING_CRONTAB_FILE="$TMP/missing-crontab"
+mkdir -p "$MISSING_WRITE_CFG"
+printf '%s\n' synthetic >"$MISSING_WRITE_CFG/hosts.yml"
+: >"$MISSING_CRONTAB_FILE"
+missing_env="FAKE_CRONTAB_FILE=$MISSING_CRONTAB_FILE FAKE_GH_LOG=$GH_LOG FAKE_GH_SCOPES=repo,read:org,gist EXPECTED_WRITE_CFG=$MISSING_WRITE_CFG GH_WRITE_OAUTH_STATE_DIR=$MISSING_STATE GH_WRITE_CONFIG=$MISSING_WRITE_CFG GH_BIN=$BIN/gh CRONTAB_BIN=$BIN/crontab GITHUB_GIT_AUTH=$BIN/auth-check GITHUB_WRITE_PREFLIGHT=$BIN/preflight"
+# shellcheck disable=SC2086
+env $missing_env "$SCRIPT" --schedule-login >"$TMP/missing-schedule.out"
+grep -F 'GH_WRITE_OAUTH SCHEDULED' "$TMP/missing-schedule.out" >/dev/null
+
+# a profile already covering the canonical set may still short-circuit
+READY_STATE="$TMP/ready-state"
+READY_WRITE_CFG="$TMP/ready-gh-write"
+READY_CRONTAB_FILE="$TMP/ready-crontab"
+mkdir -p "$READY_WRITE_CFG"
+printf '%s\n' synthetic >"$READY_WRITE_CFG/hosts.yml"
+: >"$READY_CRONTAB_FILE"
+ready_env="FAKE_CRONTAB_FILE=$READY_CRONTAB_FILE FAKE_GH_LOG=$GH_LOG FAKE_GH_SCOPES=repo,read:org,gist,project,codespace EXPECTED_WRITE_CFG=$READY_WRITE_CFG GH_WRITE_OAUTH_STATE_DIR=$READY_STATE GH_WRITE_CONFIG=$READY_WRITE_CFG GH_BIN=$BIN/gh CRONTAB_BIN=$BIN/crontab GITHUB_GIT_AUTH=$BIN/auth-check GITHUB_WRITE_PREFLIGHT=$BIN/preflight"
+# shellcheck disable=SC2086
+env $ready_env "$SCRIPT" --schedule-login >"$TMP/ready-schedule.out"
+grep -F 'reason=already_ready' "$TMP/ready-schedule.out" >/dev/null
+
+# CRLF response headers from `gh api -i` must not make a ready token look incomplete
+CRLF_STATE="$TMP/crlf-state"
+CRLF_WRITE_CFG="$TMP/crlf-gh-write"
+CRLF_CRONTAB_FILE="$TMP/crlf-crontab"
+mkdir -p "$CRLF_WRITE_CFG"
+printf '%s\n' synthetic >"$CRLF_WRITE_CFG/hosts.yml"
+: >"$CRLF_CRONTAB_FILE"
+crlf_env="FAKE_CRONTAB_FILE=$CRLF_CRONTAB_FILE FAKE_GH_LOG=$GH_LOG FAKE_GH_CRLF=1 FAKE_GH_SCOPES=repo,read:org,gist,project,codespace EXPECTED_WRITE_CFG=$CRLF_WRITE_CFG GH_WRITE_OAUTH_STATE_DIR=$CRLF_STATE GH_WRITE_CONFIG=$CRLF_WRITE_CFG GH_BIN=$BIN/gh CRONTAB_BIN=$BIN/crontab GITHUB_GIT_AUTH=$BIN/auth-check GITHUB_WRITE_PREFLIGHT=$BIN/preflight"
+# shellcheck disable=SC2086
+env $crlf_env "$SCRIPT" --schedule-login >"$TMP/crlf-schedule.out"
+grep -F 'reason=already_ready' "$TMP/crlf-schedule.out" >/dev/null
+
 # requesting additional scopes must not short-circuit on generic repo-write readiness
 SCOPED_STATE="$TMP/scoped-state"
 SCOPED_WRITE_CFG="$TMP/scoped-gh-write"
@@ -92,7 +136,7 @@ UNION_GH_LOG="$TMP/union-gh-args.log"
 union_env="FAKE_CRONTAB_FILE=$UNION_CRONTAB_FILE FAKE_GH_LOG=$UNION_GH_LOG EXPECTED_WRITE_CFG=$UNION_WRITE_CFG GH_WRITE_OAUTH_STATE_DIR=$UNION_STATE GH_WRITE_CONFIG=$UNION_WRITE_CFG GH_BIN=$BIN/gh CRONTAB_BIN=$BIN/crontab GITHUB_GIT_AUTH=$BIN/auth-check GITHUB_WRITE_PREFLIGHT=$BIN/preflight GH_WRITE_OAUTH_SCOPES=codespace"
 # shellcheck disable=SC2086
 env $union_env "$SCRIPT" --run-login
-grep -F 'auth login -h github.com -p https -w --insecure-storage -s repo,read:org,gist,project,read:project,codespace' "$UNION_GH_LOG" >/dev/null
+grep -F 'auth login -h github.com -p https -w --insecure-storage -s repo,read:org,gist,project,codespace' "$UNION_GH_LOG" >/dev/null
 
 # schedule is idempotent and creates exactly one tagged cron entry
 # shellcheck disable=SC2086
