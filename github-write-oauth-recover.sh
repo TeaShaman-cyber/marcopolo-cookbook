@@ -93,7 +93,7 @@ case ${1:-} in
 --schedule-login)
 	validate_state_dir
 	ensure_dependencies
-	if profile_ready; then
+	if [ -z "$SCOPES" ] && profile_ready; then
 		echo 'GH_WRITE_OAUTH VERIFIED profile=gh-write helper=bound reason=already_ready'
 		exit 0
 	fi
