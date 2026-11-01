@@ -898,6 +898,15 @@ Before the first GitHub mutation in a reconstructed or materially changed runtim
 
 This checks that the isolated `gh-write` profile exists and that the cookbook-managed Git helper is bound before any mutation is attempted. A missing profile is `BLOCKED`, not a reason to discover the problem through `git push`.
 
+If the preflight reports a missing `gh-write` profile, use the cron-backed one-shot recovery path rather than detached `nohup`:
+
+```bash
+/workspace/marcopolo-cookbook/github-write-oauth-recover.sh --schedule-login
+/workspace/marcopolo-cookbook/github-write-oauth-recover.sh --status
+```
+
+The recovery helper removes its cron entry before starting GitHub CLI, exposes only the sanitized device prompt through `--status`, and claims `VERIFIED` only after the profile, Git helper binding, and write preflight all succeed.
+
 The installer keeps Git's host-specific empty helper entry, which resets inherited generic helpers, and then binds `github.com` directly to:
 
 ```text

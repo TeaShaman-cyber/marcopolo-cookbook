@@ -32,65 +32,58 @@ Treat those as historical instructions tied to the older Infisical-backed route,
 
 ## Expanding GitHub OAuth scopes in headless MarcoPolo
 
-The write profile is isolated at `/workspace/.config/gh-write`. Scope expansion must target this profile explicitly and must be verified after the browser/device step.
+The write profile is isolated at `/workspace/.config/gh-write`. Scope expansion and profile reconstruction must target this profile explicitly and must be verified after the browser/device step.
 
-For GitHub Projects, request both read and write scopes explicitly:
-
-```bash
-GH_CONFIG_DIR=/workspace/.config/gh-write \
-  gh auth refresh -h github.com -s project,read:project
-```
-
-In the headless MarcoPolo shell, `gh auth refresh` may wait for an interactive browser/TTY without returning the device code through `workspace_shell`. A working fallback is to detach the device flow and capture only its public prompt:
+Detached `nohup ... &` is not a supported recovery boundary in the current MarcoPolo runtime: supervised `workspace_shell` executions may terminate detached children when the call ends. Use the cron-backed one-shot helper instead:
 
 ```bash
-rm -f /tmp/gh-project-auth.out /tmp/gh-project-auth.pid
-nohup sh -c "printf '\n' | GH_BROWSER=echo GH_CONFIG_DIR=/workspace/.config/gh-write gh auth refresh -h github.com -s project,read:project" \
-  >/tmp/gh-project-auth.out 2>&1 </dev/null &
-echo $! >/tmp/gh-project-auth.pid
-sleep 1
-sed -n '1,40p' /tmp/gh-project-auth.out
+/workspace/marcopolo-cookbook/github-write-oauth-recover.sh --schedule-login
 ```
 
-The operator opens `https://github.com/login/device` and enters the displayed one-time code.
+The helper installs one tagged cron entry. On the first cron tick it atomically marks the flow started, removes its own cron entry before invoking GitHub CLI, and then waits for the GitHub device flow independently of the creating `workspace_shell` call. Repeated cron invocations or repeated `--run-login` calls cannot start a second flow.
 
-### Important verification rule
-
-Browser approval is not proof that the local `gh-write` credential was updated. A previous device flow was approved in the browser while the detached `gh auth refresh` process remained pending and the stored token still lacked Project scopes.
-
-After approval, verify the local profile and the actual capability:
+Read only the sanitized operator-facing state:
 
 ```bash
-GH_CONFIG_DIR=/workspace/.config/gh-write gh auth status -h github.com
-GH_CONFIG_DIR=/workspace/.config/gh-write gh project list --owner TeaShaman-cyber --format json
+/workspace/marcopolo-cookbook/github-write-oauth-recover.sh --status
 ```
 
-Only treat Project access as available after `gh auth status` shows the required Project scopes and the Project probe succeeds. If the detached flow remains pending and scopes do not change, treat it as `DEGRADED`, terminate only the exact captured auth-flow PID/process, and start a fresh device flow. Do not switch credential stores or fall back to the legacy wrapper merely because scope refresh stalled.
+`--status` exposes only the one-time device code, the GitHub device URL, and the recovery state. The raw GitHub CLI login log remains private in the temporary recovery state directory and is not printed.
 
-This follows the general runtime rule: browser authorization, stored credential state, and executable provider capability are three separate postconditions and must not be conflated.
-
-### Observed successful Projects scope refresh — 2026-08-30
-
-A successful headless refresh required a fresh device flow requesting both `project,read:project`. After browser approval, the detached `gh auth refresh` process exited on its own and the stored profile changed.
-
-Observed postconditions:
+Open `https://github.com/login/device`, enter the displayed one-time code, and approve the requested OAuth access. Browser approval alone is not success. The helper claims `VERIFIED` only after all three postconditions hold:
 
 ```text
-requested: project,read:project
-gh auth status: project
-project probe: gh project list -> success
+/workspace/.config/gh-write/hosts.yml exists
+github-git-auth.sh --install succeeds
+github-write-preflight.sh --check succeeds
 ```
 
-GitHub may report only the broader `project` scope after approval; do not require the literal string `read:project` if the provider has granted `project` and the live read probe succeeds. The capability probe is authoritative for the runtime, not the textual scope list alone.
-
-Recommended verification sequence:
+After a verified or failed flow, remove only the recovery schedule/state:
 
 ```bash
-GH_CONFIG_DIR=/workspace/.config/gh-write gh auth status -h github.com
+/workspace/marcopolo-cookbook/github-write-oauth-recover.sh --cleanup
+```
+
+The resulting `gh-write` profile is intentionally preserved by cleanup.
+
+For GitHub Projects, request the additional Projects scopes on the scheduled flow:
+
+```bash
+GH_WRITE_OAUTH_SCOPES=project,read:project \
+  /workspace/marcopolo-cookbook/github-write-oauth-recover.sh --schedule-login
+```
+
+Then use `--status` and the same browser device step. Treat Projects capability as verified only after the provider-native Project probe succeeds:
+
+```bash
 GH_CONFIG_DIR=/workspace/.config/gh-write gh project list --owner TeaShaman-cyber --format json
 ```
 
-Treat the refresh as successful only when the detached auth process has ended, the stored credential state has changed as expected, and the actual Project operation succeeds. Browser approval by itself is only one intermediate postcondition.
+### Historical note
+
+A 2026-08-30 device-flow experiment succeeded with a detached process in an earlier runtime, but the reconstructed 2026-11 runtime verified a different lifecycle: a detached canary did not survive `workspace_shell`, while a cron-launched canary did. The cron-backed helper therefore supersedes the old detached-`nohup` recipe.
+
+Browser authorization, stored credential state, Git helper binding, and executable provider capability remain separate postconditions.
 
 ## GitHub Wiki bootstrap in headless MarcoPolo
 
