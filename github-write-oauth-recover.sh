@@ -10,7 +10,8 @@ AUTH_CHECK=${GITHUB_GIT_AUTH:-/workspace/marcopolo-cookbook/github-git-auth.sh}
 PREFLIGHT=${GITHUB_WRITE_PREFLIGHT:-/workspace/marcopolo-cookbook/github-write-preflight.sh}
 WORKSPACE_GH_BIN=${GH_WORKSPACE_BIN:-/workspace/.local/bin/gh}
 SYSTEM_GH_BIN=${GH_SYSTEM_BIN:-/usr/local/bin/gh}
-SCOPES=${GH_WRITE_OAUTH_SCOPES:-}
+REQUESTED_SCOPES=${GH_WRITE_OAUTH_SCOPES:-}
+CANONICAL_SCOPES='repo,read:org,gist,project,read:project,codespace'
 MARKER=GH_WRITE_OAUTH_RECOVERY
 SELF=$(CDPATH= cd -- "$(dirname "$0")" && pwd)/$(basename "$0")
 
@@ -39,6 +40,16 @@ failed() {
 shell_quote() {
 	printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\"'\"'/g")"
 }
+
+merge_scopes() {
+	printf '%s\n%s\n' "$1" "$2" | tr ',' '\n' | awk '
+		{ gsub(/^[[:space:]]+|[[:space:]]+$/, "") }
+		NF && !seen[$0]++ { scopes = scopes (scopes ? "," : "") $0 }
+		END { print scopes }
+	'
+}
+
+SCOPES=$(merge_scopes "$CANONICAL_SCOPES" "$REQUESTED_SCOPES")
 
 validate_state_dir() {
 	case "$STATE_DIR" in
@@ -93,7 +104,7 @@ case ${1:-} in
 --schedule-login)
 	validate_state_dir
 	ensure_dependencies
-	if [ -z "$SCOPES" ] && profile_ready; then
+	if [ -z "$REQUESTED_SCOPES" ] && profile_ready; then
 		echo 'GH_WRITE_OAUTH VERIFIED profile=gh-write helper=bound reason=already_ready'
 		exit 0
 	fi

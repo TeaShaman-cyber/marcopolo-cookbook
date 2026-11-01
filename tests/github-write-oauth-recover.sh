@@ -82,6 +82,18 @@ env $scoped_env "$SCRIPT" --schedule-login >"$TMP/scoped-schedule.out"
 grep -F 'GH_WRITE_OAUTH SCHEDULED' "$TMP/scoped-schedule.out" >/dev/null
 [ "$(grep -c 'GH_WRITE_OAUTH_RECOVERY' "$SCOPED_CRONTAB_FILE")" = 1 ]
 
+# requesting one project-required capability must converge on the full canonical scope set
+UNION_STATE="$TMP/union-state"
+UNION_WRITE_CFG="$TMP/union-gh-write"
+UNION_CRONTAB_FILE="$TMP/union-crontab"
+UNION_GH_LOG="$TMP/union-gh-args.log"
+: >"$UNION_CRONTAB_FILE"
+: >"$UNION_GH_LOG"
+union_env="FAKE_CRONTAB_FILE=$UNION_CRONTAB_FILE FAKE_GH_LOG=$UNION_GH_LOG EXPECTED_WRITE_CFG=$UNION_WRITE_CFG GH_WRITE_OAUTH_STATE_DIR=$UNION_STATE GH_WRITE_CONFIG=$UNION_WRITE_CFG GH_BIN=$BIN/gh CRONTAB_BIN=$BIN/crontab GITHUB_GIT_AUTH=$BIN/auth-check GITHUB_WRITE_PREFLIGHT=$BIN/preflight GH_WRITE_OAUTH_SCOPES=codespace"
+# shellcheck disable=SC2086
+env $union_env "$SCRIPT" --run-login
+grep -F 'auth login -h github.com -p https -w --insecure-storage -s repo,read:org,gist,project,read:project,codespace' "$UNION_GH_LOG" >/dev/null
+
 # schedule is idempotent and creates exactly one tagged cron entry
 # shellcheck disable=SC2086
 env $common_env "$SCRIPT" --schedule-login >"$TMP/schedule1.out"

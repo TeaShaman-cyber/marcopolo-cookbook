@@ -66,17 +66,13 @@ After a verified or failed flow, remove only the recovery schedule/state:
 
 The resulting `gh-write` profile is intentionally preserved by cleanup.
 
-For GitHub Projects, request the additional Projects scopes on the scheduled flow:
+The helper owns one versioned canonical scope set for project-required GitHub capabilities. Every new OAuth login requests that complete set, so adding Codespaces does not drop Projects access (or vice versa). `GH_WRITE_OAUTH_SCOPES` is only for an explicitly requested extra scope; it is merged with the canonical set rather than replacing it. Do not use one-off scope lists for normal project capabilities.
 
-```bash
-GH_WRITE_OAUTH_SCOPES=project,read:project \
-  /workspace/marcopolo-cookbook/github-write-oauth-recover.sh --schedule-login
-```
-
-Then use `--status` and the same browser device step. Treat Projects capability as verified only after the provider-native Project probe succeeds:
+After browser approval, verify the capabilities through their provider-native probes. In particular, Projects and Codespaces remain separate capability surfaces:
 
 ```bash
 GH_CONFIG_DIR=/workspace/.config/gh-write gh project list --owner TeaShaman-cyber --format json
+GH_CONFIG_DIR=/workspace/.config/gh-write gh codespace list --repo TeaShaman-cyber/theseus-session-search-lab
 ```
 
 ### Historical note

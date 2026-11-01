@@ -17,6 +17,10 @@ class GitHubWriteOAuthRecoveryDocsTests(unittest.TestCase):
         self.assertIn("--schedule-login", section)
         self.assertIn("--status", section)
         self.assertNotIn("nohup sh -c", section)
+        self.assertIn("canonical scope set", section)
+        self.assertIn("gh project list", section)
+        self.assertIn("gh codespace list", section)
+        self.assertNotIn("GH_WRITE_OAUTH_SCOPES=project,read:project", section)
 
     def test_runtime_rules_point_missing_profile_to_recovery_helper(self):
         text = RULES.read_text(encoding="utf-8")
