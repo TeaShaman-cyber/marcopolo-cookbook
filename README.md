@@ -20,6 +20,8 @@ A path, dependency, or artifact observed in one runtime is not assumed to exist 
 
 ## Components
 
+- [Grafana CLI login recipe](grafana/README.md) — verified cron, callback relay, readback and cleanup.
+
 - [MarcoPolo field notes](marcopolo/README.md) — shell, connector, Git/GitHub, worktree, artifact, runtime, and MCP failure modes with verified workarounds.
 - [Session Search](session-search/README.md) — reconstruct prior session evidence from exported conversation history.
 - [Workspace RULES projection](rules/workspace.RULES.md) — Git-reviewed source for small workspace-wide runtime routing guidance.
