@@ -100,11 +100,21 @@ profile_ready() {
 	"$PREFLIGHT" --check >/dev/null 2>&1
 }
 
+scope_set_ready() {
+	profile_ready || return 1
+	headers=$(GH_CONFIG_DIR="$WRITE_CFG" "$GH_BIN" api -i user 2>/dev/null) || return 1
+	granted=$(printf '%s\n' "$headers" | awk 'tolower($0) ~ /^x-oauth-scopes:/ { sub(/^[^:]*:[[:space:]]*/, ""); print; exit }')
+	[ -n "$granted" ] || return 1
+	for required in $(printf '%s' "$SCOPES" | tr ',' ' '); do
+		printf '%s\n' "$granted" | tr ',' '\n' | awk '{$1=$1; print}' | grep -Fx "$required" >/dev/null 2>&1 || return 1
+	done
+}
+
 case ${1:-} in
 --schedule-login)
 	validate_state_dir
 	ensure_dependencies
-	if [ -z "$REQUESTED_SCOPES" ] && profile_ready; then
+	if scope_set_ready; then
 		echo 'GH_WRITE_OAUTH VERIFIED profile=gh-write helper=bound reason=already_ready'
 		exit 0
 	fi
