@@ -69,6 +69,19 @@ chmod +x "$BIN/preflight"
 
 common_env="FAKE_CRONTAB_FILE=$CRONTAB_FILE FAKE_GH_LOG=$GH_LOG EXPECTED_WRITE_CFG=$WRITE_CFG GH_WRITE_OAUTH_STATE_DIR=$STATE GH_WRITE_CONFIG=$WRITE_CFG GH_BIN=$BIN/gh CRONTAB_BIN=$BIN/crontab GITHUB_GIT_AUTH=$BIN/auth-check GITHUB_WRITE_PREFLIGHT=$BIN/preflight"
 
+# requesting additional scopes must not short-circuit on generic repo-write readiness
+SCOPED_STATE="$TMP/scoped-state"
+SCOPED_WRITE_CFG="$TMP/scoped-gh-write"
+SCOPED_CRONTAB_FILE="$TMP/scoped-crontab"
+mkdir -p "$SCOPED_WRITE_CFG"
+printf '%s\n' synthetic >"$SCOPED_WRITE_CFG/hosts.yml"
+: >"$SCOPED_CRONTAB_FILE"
+scoped_env="FAKE_CRONTAB_FILE=$SCOPED_CRONTAB_FILE FAKE_GH_LOG=$GH_LOG EXPECTED_WRITE_CFG=$SCOPED_WRITE_CFG GH_WRITE_OAUTH_STATE_DIR=$SCOPED_STATE GH_WRITE_CONFIG=$SCOPED_WRITE_CFG GH_BIN=$BIN/gh CRONTAB_BIN=$BIN/crontab GITHUB_GIT_AUTH=$BIN/auth-check GITHUB_WRITE_PREFLIGHT=$BIN/preflight GH_WRITE_OAUTH_SCOPES=project,read:project"
+# shellcheck disable=SC2086
+env $scoped_env "$SCRIPT" --schedule-login >"$TMP/scoped-schedule.out"
+grep -F 'GH_WRITE_OAUTH SCHEDULED' "$TMP/scoped-schedule.out" >/dev/null
+[ "$(grep -c 'GH_WRITE_OAUTH_RECOVERY' "$SCOPED_CRONTAB_FILE")" = 1 ]
+
 # schedule is idempotent and creates exactly one tagged cron entry
 # shellcheck disable=SC2086
 env $common_env "$SCRIPT" --schedule-login >"$TMP/schedule1.out"
