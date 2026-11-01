@@ -92,7 +92,7 @@ READY_CRONTAB_FILE="$TMP/ready-crontab"
 mkdir -p "$READY_WRITE_CFG"
 printf '%s\n' synthetic >"$READY_WRITE_CFG/hosts.yml"
 : >"$READY_CRONTAB_FILE"
-ready_env="FAKE_CRONTAB_FILE=$READY_CRONTAB_FILE FAKE_GH_LOG=$GH_LOG FAKE_GH_SCOPES=repo,read:org,gist,project,read:project,codespace EXPECTED_WRITE_CFG=$READY_WRITE_CFG GH_WRITE_OAUTH_STATE_DIR=$READY_STATE GH_WRITE_CONFIG=$READY_WRITE_CFG GH_BIN=$BIN/gh CRONTAB_BIN=$BIN/crontab GITHUB_GIT_AUTH=$BIN/auth-check GITHUB_WRITE_PREFLIGHT=$BIN/preflight"
+ready_env="FAKE_CRONTAB_FILE=$READY_CRONTAB_FILE FAKE_GH_LOG=$GH_LOG FAKE_GH_SCOPES=repo,read:org,gist,project,codespace EXPECTED_WRITE_CFG=$READY_WRITE_CFG GH_WRITE_OAUTH_STATE_DIR=$READY_STATE GH_WRITE_CONFIG=$READY_WRITE_CFG GH_BIN=$BIN/gh CRONTAB_BIN=$BIN/crontab GITHUB_GIT_AUTH=$BIN/auth-check GITHUB_WRITE_PREFLIGHT=$BIN/preflight"
 # shellcheck disable=SC2086
 env $ready_env "$SCRIPT" --schedule-login >"$TMP/ready-schedule.out"
 grep -F 'reason=already_ready' "$TMP/ready-schedule.out" >/dev/null
@@ -120,7 +120,7 @@ UNION_GH_LOG="$TMP/union-gh-args.log"
 union_env="FAKE_CRONTAB_FILE=$UNION_CRONTAB_FILE FAKE_GH_LOG=$UNION_GH_LOG EXPECTED_WRITE_CFG=$UNION_WRITE_CFG GH_WRITE_OAUTH_STATE_DIR=$UNION_STATE GH_WRITE_CONFIG=$UNION_WRITE_CFG GH_BIN=$BIN/gh CRONTAB_BIN=$BIN/crontab GITHUB_GIT_AUTH=$BIN/auth-check GITHUB_WRITE_PREFLIGHT=$BIN/preflight GH_WRITE_OAUTH_SCOPES=codespace"
 # shellcheck disable=SC2086
 env $union_env "$SCRIPT" --run-login
-grep -F 'auth login -h github.com -p https -w --insecure-storage -s repo,read:org,gist,project,read:project,codespace' "$UNION_GH_LOG" >/dev/null
+grep -F 'auth login -h github.com -p https -w --insecure-storage -s repo,read:org,gist,project,codespace' "$UNION_GH_LOG" >/dev/null
 
 # schedule is idempotent and creates exactly one tagged cron entry
 # shellcheck disable=SC2086

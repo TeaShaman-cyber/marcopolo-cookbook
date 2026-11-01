@@ -11,7 +11,7 @@ PREFLIGHT=${GITHUB_WRITE_PREFLIGHT:-/workspace/marcopolo-cookbook/github-write-p
 WORKSPACE_GH_BIN=${GH_WORKSPACE_BIN:-/workspace/.local/bin/gh}
 SYSTEM_GH_BIN=${GH_SYSTEM_BIN:-/usr/local/bin/gh}
 REQUESTED_SCOPES=${GH_WRITE_OAUTH_SCOPES:-}
-CANONICAL_SCOPES='repo,read:org,gist,project,read:project,codespace'
+CANONICAL_SCOPES='repo,read:org,gist,project,codespace'
 MARKER=GH_WRITE_OAUTH_RECOVERY
 SELF=$(CDPATH= cd -- "$(dirname "$0")" && pwd)/$(basename "$0")
 
