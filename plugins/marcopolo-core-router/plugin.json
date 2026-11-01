@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "marcopolo-core-router",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Thin operational guardrails for MarcoPolo authority, credentialed connection setup, GitHub routing, currentness, 403 boundaries, and verified completion.",
   "author": {
     "name": "TeaShaman-cyber"
