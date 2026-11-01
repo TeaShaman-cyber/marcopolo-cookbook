@@ -119,6 +119,27 @@ retire, or preserve it. Prefer disposable worktrees or short-lived branches for
 bounded agent changes, and remove them after verified merge when no recovery
 intent remains; do not accumulate new long-lived workspace branches by default.
 
+## Ephemeral executor storage / durable outputs
+
+Treat Codespace-local `/tmp`, CI runner-local disks, and other executor scratch
+storage as ephemeral execution state, not durable project state. They are
+appropriate for caches, unpacked inputs, temporary databases, derived verifier
+copies, and other intermediates that are cheap or deterministic to reconstruct.
+
+Before stopping, deleting, or allowing an ephemeral executor to expire, persist
+every continuation-critical or expensive-to-recompute output to an authorized
+durable store. This includes assembled corpora, indexes, benchmark outputs,
+receipts, manifests, and other derived artifacts whose loss would force
+meaningful repeated work.
+
+When practical, record the promoted object's byte size and SHA-256 and keep a
+receipt or manifest linking it to its source identity plus the producing
+command/version. Verify the durable copy before treating the executor-local copy
+as disposable.
+A successful computation inside a Codespace is not durable evidence until its
+required outputs have crossed that runtime boundary and been read back.
+
+
 A runtime projection such as `/workspace/RULES.md` remains distinct from both
 the current Git ref and any stale workspace checkout; verify the relevant
 postcondition explicitly.

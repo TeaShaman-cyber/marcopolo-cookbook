@@ -30,6 +30,18 @@ class WorkspaceRulesTest(unittest.TestCase):
         self.assertIn("Prefer disposable worktrees or short-lived branches", text)
         self.assertIn("remove them after verified merge", text)
 
+    def test_ephemeral_executor_outputs_are_promoted_before_teardown(self):
+        text = RULES.read_text(encoding="utf-8")
+
+        self.assertIn("Ephemeral executor storage / durable outputs", text)
+        self.assertIn("Codespace-local `/tmp`", text)
+        self.assertIn("continuation-critical or expensive-to-recompute output", text)
+        self.assertIn("byte size and SHA-256", text)
+        self.assertIn("receipt or manifest", text)
+        self.assertIn(
+            "A successful computation inside a Codespace is not durable evidence", text
+        )
+
     def test_github_routes_are_capability_specific(self):
         text = RULES.read_text(encoding="utf-8")
 
